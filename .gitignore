@@ -1,0 +1,9 @@
+web/site/
+mobile/node_modules/
+mobile/www/
+mobile/assets/
+mobile/android/
+mobile/ios/
+mobile/capacitor.config.json
+__pycache__/
+.DS_Store

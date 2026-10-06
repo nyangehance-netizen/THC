@@ -1,0 +1,29 @@
+{
+  "name": "THC Centre – Resource Centre staff",
+  "short_name": "THC Centre",
+  "description": "Live SOS alerts, worker locations and messaging for Resource Centre staff.",
+  "start_url": "centre.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F5F5F7",
+  "theme_color": "#F5F5F7",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "icon-centre-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-centre-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-centre-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

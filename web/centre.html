@@ -1,0 +1,617 @@
+<title>THC Centre</title>
+<meta name="theme-color" content="#F5F5F7">
+<meta name="color-scheme" content="light only">
+<link rel="manifest" href="manifest-centre.json">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Staff phone app: alert feed first, one tap into a case, every way to reach the worker on one screen. */
+  :root { --ease: cubic-bezier(.2,.8,.2,1); --spring: cubic-bezier(.34,1.56,.64,1); --nav-h: 64px; --staff-bg: #0B1A3D; }
+  html, body { height: 100%; }
+  body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+  /* minimal Leaflet layout rules in case its stylesheet is unavailable */
+  .leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-layer{position:absolute;left:0;top:0}
+  .leaflet-container{overflow:hidden;background:var(--surface-2)}
+  .leaflet-tile{visibility:hidden}.leaflet-tile-loaded{visibility:inherit}
+  .leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important}
+  .leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}
+  .leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-right{right:0}
+  .leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+  .leaflet-top .leaflet-control{margin-top:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{float:right;margin-right:10px}
+  .leaflet-bar a{display:block;width:30px;height:30px;line-height:30px;text-align:center;background:#fff;color:#000;text-decoration:none;font-weight:700}
+  .leaflet-control-attribution{background:rgba(255,255,255,.8);color:#333;padding:0 5px;font-size:11px}
+  .leaflet-interactive{cursor:pointer}.leaflet-zoom-animated{transform-origin:0 0}
+
+  .app { max-width: 640px; margin: 0 auto; min-height: 100%; }
+  .hdr { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: var(--staff-bg); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .logo { font-family: var(--font-display); font-weight: 900; font-stretch: 125%; font-size: 1.45rem; letter-spacing: .08em; line-height: 1; }
+  .role { font-size: .65rem; font-weight: 800; letter-spacing: .16em; padding: 3px 8px; border-radius: 6px; background: #fff; color: var(--staff-bg); }
+  .grow { flex: 1; }
+  .live { display: inline-flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.1); }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: #6EE7A6; animation: beat 2s infinite; }
+  @keyframes beat { 0% { box-shadow: 0 0 0 0 rgba(110,231,166,.6); } 70% { box-shadow: 0 0 0 7px rgba(110,231,166,0); } 100% { box-shadow: 0 0 0 0 rgba(110,231,166,0); } }
+  .iconbtn { background: rgba(255,255,255,.1); border: 0; color: #fff; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; }
+  .iconbtn[aria-pressed="false"] { opacity: .55; }
+
+  main.view { padding-inline: 16px; padding-block: 14px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; animation: viewIn .35s var(--ease); }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(10px); } }
+
+  .sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sum button { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; text-align: left; cursor: pointer; display: grid; gap: 0; }
+  .sum b { font-family: var(--font-display); font-size: 1.7rem; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .sum span { font-size: .7rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .sum .sos b { color: var(--sos); } .sum .late b { color: var(--warn); }
+  .sum .sos.hot { border-color: var(--sos); background: color-mix(in srgb, var(--sos) 8%, var(--surface)); }
+  .sum .sos.hot b { animation: throb 1.4s ease-in-out infinite; }
+  @keyframes throb { 50% { opacity: .5; } }
+
+  .seg2 { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface-2); border-radius: 12px; padding: 3px; position: relative; }
+  .seg2 button { border: 0; background: transparent; padding: 8px 4px; font-weight: 700; font-size: .82rem; border-radius: 9px; cursor: pointer; color: var(--muted); position: relative; z-index: 1; transition: color .2s; }
+  .seg2 button[aria-pressed="true"] { color: var(--ink); }
+  .seg2 .pillbg { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(25% - 1.5px); background: var(--surface); border-radius: 9px; box-shadow: 0 1px 3px rgba(0,0,0,.12); transition: transform .3s var(--ease); }
+
+  .cases { display: grid; gap: 10px; }
+  .cc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 2px 12px; align-items: center; text-align: left; cursor: pointer;
+        position: relative; overflow: hidden; transition: transform .15s var(--ease); }
+  .cc:active { transform: scale(.98); }
+  .cc.sos::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--sos); }
+  .cc .ic { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: var(--surface-2); color: var(--brand); grid-row: span 3; }
+  .cc.sos .ic { background: color-mix(in srgb, var(--sos) 14%, transparent); color: var(--sos); }
+  .cc .nm { font-weight: 800; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc .tm { font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cc .wt { font-size: .85rem; grid-column: 2 / -1; }
+  .cc .wh { font-size: .78rem; color: var(--muted); grid-column: 2 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .cc.fresh { animation: caseIn .6s var(--spring); }
+  .cc.fresh.sos { animation: caseIn .6s var(--spring), flash 1s 3; }
+  @keyframes caseIn { from { opacity: 0; transform: translateY(-16px) scale(.96); } }
+  @keyframes flash { 50% { background: color-mix(in srgb, var(--sos) 16%, var(--surface)); } }
+  .st { font-size: .66rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; }
+  .st.new { background: color-mix(in srgb, var(--sos) 14%, transparent); color: var(--sos); }
+  .st.in_progress { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+  .st.resolved { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+  .st.ex { background: var(--surface-2); color: var(--muted); }
+  .msgdot { display: inline-flex; align-items: center; gap: 4px; color: var(--brand); font-weight: 800; font-size: .72rem; }
+  .msgdot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+  .empty { text-align: center; color: var(--muted); padding: 36px 16px; }
+
+  /* case panel */
+  .panel { position: fixed; inset: 0; z-index: 45; background: var(--bg); overflow: auto; animation: slideL .35s var(--ease); padding-top: env(safe-area-inset-top, 0px); }
+  .panel.closing { animation: slideR .28s var(--ease) forwards; }
+  @keyframes slideL { from { transform: translateX(100%); } }
+  @keyframes slideR { to { transform: translateX(100%); } }
+  .pbar { position: sticky; top: 0; z-index: 5; background: var(--staff-bg); color: #fff; display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .pbar h2 { font-size: 1rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pin { max-width: 640px; margin: 0 auto; padding-inline: 16px; padding-block: 14px 40px; display: grid; gap: 14px; }
+  .hero { display: grid; gap: 4px; }
+  .hero h1 { font-size: 1.5rem; font-weight: 900; font-stretch: 108%; }
+  .acts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .act { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 4px; display: grid; justify-items: center; gap: 5px; font-size: .75rem; font-weight: 800; color: var(--ink); text-decoration: none; cursor: pointer; transition: transform .15s var(--spring); }
+  .act:active { transform: scale(.92); }
+  .act .ci { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--brand-bg); }
+  .act.call .ci { background: var(--ok); }
+  .act.off { opacity: .4; pointer-events: none; }
+  .phones { font-size: .8rem; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .phones b { font-family: var(--font-mono); color: var(--ink); font-weight: 500; }
+  .stepper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stepper button { border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 4px; font-weight: 800; font-size: .85rem; cursor: pointer; transition: all .25s var(--ease); color: var(--muted); }
+  .stepper button[aria-pressed="true"].new { border-color: var(--sos); color: var(--sos); background: color-mix(in srgb, var(--sos) 8%, var(--surface)); }
+  .stepper button[aria-pressed="true"].in_progress { border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); }
+  .stepper button[aria-pressed="true"].resolved { border-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--surface)); }
+  #pmap { height: 210px; border-radius: 14px; border: 1px solid var(--line); }
+  .sh { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: var(--muted); }
+  .thread { display: grid; gap: 8px; }
+  .bub { max-width: 82%; padding: 9px 12px; border-radius: 16px; font-size: .92rem; animation: bubIn .35s var(--spring); overflow-wrap: anywhere; }
+  .bub small { display: block; font-size: .68rem; opacity: .75; margin-top: 3px; }
+  .bub.worker { background: var(--surface); border: 1px solid var(--line); justify-self: start; border-bottom-left-radius: 5px; }
+  .bub.staff { background: var(--brand-bg); color: #fff; justify-self: end; border-bottom-right-radius: 5px; }
+  .bub.report { background: color-mix(in srgb, var(--sos) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--sos) 30%, transparent); justify-self: start; }
+  @keyframes bubIn { from { opacity: 0; transform: translateY(8px) scale(.96); } }
+  .quick { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .quick button { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px; font-size: .8rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .composer { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+  .composer textarea { min-height: 46px; }
+  .send { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--brand-bg); color: #fff; display: grid; place-items: center; cursor: pointer; transition: transform .15s var(--spring); }
+  .send:active { transform: scale(.88); }
+  details.card summary { cursor: pointer; font-weight: 800; }
+
+  #bigmap { height: calc(100vh - 210px); min-height: 360px; border-radius: 16px; border: 1px solid var(--line); }
+  .legend { display: flex; gap: 14px; font-size: .78rem; color: var(--muted); flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+
+  .wk { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; cursor: pointer; }
+  .wk b { font-weight: 800; } .wk .s { font-size: .8rem; color: var(--muted); }
+  .wk .late { color: var(--warn); font-weight: 800; font-size: .78rem; }
+
+  /* SOS alarm */
+  .alarm { position: fixed; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 60; max-width: 616px; margin: 0 auto; background: var(--sos); color: #fff; border-radius: 18px; padding: 14px 16px;
+           display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; box-shadow: 0 18px 40px -10px rgba(120,10,10,.6); animation: alarmIn .5s var(--spring), alarmPulse 1.2s 1s ease-in-out infinite; }
+  .alarm b { font-family: var(--font-display); font-size: 1.15rem; font-weight: 900; letter-spacing: .04em; }
+  .alarm span { font-size: .85rem; opacity: .95; }
+  .alarm button { grid-row: span 2; background: #fff; color: var(--sos); border: 0; border-radius: 12px; padding: 10px 16px; font-weight: 900; cursor: pointer; }
+  @keyframes alarmIn { from { transform: translateY(-140%); } }
+  @keyframes alarmPulse { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--sos) 30%, transparent); } }
+
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .nav-in { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); height: var(--nav-h); position: relative; }
+  .nav button { background: none; border: 0; display: grid; justify-items: center; align-content: center; gap: 3px; font-size: .7rem; font-weight: 700; color: var(--muted); cursor: pointer; position: relative; }
+  .nav button svg { transition: transform .25s var(--spring); }
+  .nav button[aria-current="page"] { color: var(--brand); }
+  .nav button[aria-current="page"] svg { transform: translateY(-2px) scale(1.12); }
+  .nav .ind { position: absolute; top: 0; height: 3px; width: 25%; background: var(--brand); border-radius: 0 0 3px 3px; transition: transform .35s var(--ease); }
+  .nav .count { position: absolute; top: 7px; left: calc(50% + 6px); background: var(--sos); color: #fff; font-size: .62rem; font-weight: 800; border-radius: 999px; padding: 1px 6px; }
+  .toast { bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom, 0px)); animation: toastIn .3s var(--spring); z-index: 70; }
+  @keyframes toastIn { from { transform: translate(-50%, 20px); opacity: 0; } }
+  .login { max-width: 420px; margin: 40px auto; padding-inline: 16px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  /* ---- Apple-style finish ---- */
+  .hdr { background: var(--navbg); color: var(--ink); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
+  .logo { font-family: var(--font-display); font-weight: 700; font-stretch: normal; letter-spacing: -.03em; font-size: 1.4rem; color: var(--ink); }
+  .nav { background: var(--navbg); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-top: .5px solid var(--line); }
+  .nav .ind { display: none; }
+  .nav button { font-weight: 500; font-size: .68rem; letter-spacing: 0; }
+  .nav button[aria-current="page"] { color: var(--brand-bg); }
+  .nav .count { background: var(--sos); font-weight: 600; }
+  .role { background: var(--ink); color: var(--bg); font-weight: 600; letter-spacing: .06em; border-radius: 6px; }
+  .live { background: var(--surface-2); color: var(--ink); font-weight: 500; }
+  .live i { background: var(--ok-fill); }
+  .iconbtn { background: var(--surface-2); color: var(--ink); border-radius: 50%; }
+  .iconbtn[aria-pressed="true"] { background: var(--brand-bg); color: #fff; }
+  .iconbtn[aria-pressed="false"] { opacity: 1; color: var(--muted); }
+  .sum button { border: 0; border-radius: 18px; box-shadow: var(--shadow); padding: 12px 14px; }
+  .sum b { font-family: var(--font-display); font-weight: 700; font-size: 1.9rem; letter-spacing: -.03em; }
+  .sum span { text-transform: none; letter-spacing: -.01em; font-weight: 500; font-size: .78rem; }
+  .sum .sos.hot { background: var(--surface); box-shadow: 0 0 0 2px var(--sos); }
+  .seg2 { border-radius: 10px; padding: 2px; background: var(--surface-2); }
+  .seg2 button { font-weight: 500; color: var(--ink); border-radius: 8px; }
+  .seg2 .pillbg { top: 2px; bottom: 2px; left: 2px; width: calc(25% - 1px); border-radius: 8px; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.04); }
+  .cc, .wk { border: 0; border-radius: 18px; box-shadow: var(--shadow); }
+  .cc.sos::before { width: 4px; }
+  .cc .ic { border-radius: 50%; color: var(--brand-bg); background: color-mix(in srgb, var(--brand-bg) 10%, transparent); }
+  .cc .nm, .wk b { font-weight: 600; }
+  .st { font-weight: 600; text-transform: none; letter-spacing: 0; font-size: .72rem; }
+  .msgdot { color: var(--brand); font-weight: 600; }
+  .msgdot::before { background: var(--brand-bg); }
+  .pbar { background: var(--navbg); color: var(--ink); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: .5px solid var(--line); }
+  .pbar h2 { font-weight: 600; font-size: 1.05rem; text-align: center; }
+  .panel { background: var(--bg); }
+  .hero h1 { font-size: 2rem; font-weight: 700; font-stretch: normal; letter-spacing: -.03em; }
+  .act { border: 0; border-radius: 18px; box-shadow: var(--shadow); font-weight: 500; color: var(--brand); }
+  .act .ci { background: var(--brand-bg); }
+  .act.call .ci { background: var(--ok-fill); }
+  .stepper button { border: 0; border-radius: 980px; background: var(--surface-2); color: var(--ink); font-weight: 500; }
+  .stepper button[aria-pressed="true"].new { background: var(--sos); color: #fff; }
+  .stepper button[aria-pressed="true"].in_progress { background: #FF9500; color: #fff; }
+  .stepper button[aria-pressed="true"].resolved { background: var(--ok-fill); color: #fff; }
+  #pmap, #bigmap { border: 0; border-radius: 18px; }
+  .sh { text-transform: none; letter-spacing: -.01em; font-size: .9rem; font-weight: 600; color: var(--ink); }
+  .bub { border-radius: 20px; }
+  .bub.worker { background: var(--surface); border: 0; box-shadow: var(--shadow); border-bottom-left-radius: 6px; }
+  .bub.staff { background: var(--brand-bg); border-bottom-right-radius: 6px; }
+  .bub.report { background: color-mix(in srgb, var(--sos) 10%, var(--surface)); border: 0; }
+  .quick button { border: 0; background: color-mix(in srgb, var(--brand-bg) 10%, var(--surface)); color: var(--brand); font-weight: 400; }
+  .send { background: var(--brand-bg); }
+  details.card summary { font-weight: 600; }
+  .alarm { border-radius: 22px; background: var(--sos); }
+  .alarm b { font-family: var(--font-display); font-weight: 700; letter-spacing: -.01em; }
+  .alarm button { border-radius: 980px; font-weight: 600; padding: 9px 20px; }
+</style>
+
+<div class="app">
+  <header class="hdr">
+    <span class="logo">THC</span><span class="role">CENTRE</span>
+    <span class="grow"></span>
+    <span class="live" id="live"><i></i><span id="liveTxt">Live</span></span>
+    <button class="iconbtn" id="soundBtn" type="button" aria-pressed="false" aria-label="Sound alerts" title="Sound alerts">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg>
+    </button>
+  </header>
+
+  <section id="loginView" class="login" hidden>
+    <form class="card" id="loginForm">
+      <h2>Staff sign-in</h2>
+      <p class="small muted">THC Centre is for Resource Centre staff only.</p>
+      <label>Email<input id="lg_email" type="email" autocomplete="username" required></label>
+      <label>Password<input id="lg_pass" type="password" autocomplete="current-password" required></label>
+      <p id="lgErr" class="note bad" hidden></p>
+      <button class="btn primary block" type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <main class="view" id="v-alerts" hidden>
+    <p id="demoNote" class="note small" hidden>Demo mode. Cases marked <span class="st ex">Example</span> are sample data. Reports sent from the THC worker app in this same browser arrive here live.</p>
+    <div class="sum">
+      <button class="sos" id="s_sos" type="button"><b>0</b><span>Open SOS</span></button>
+      <button id="s_help" type="button"><b>0</b><span>Reports</span></button>
+      <button class="late" id="s_late" type="button"><b>0</b><span>No contact</span></button>
+    </div>
+    <div class="seg2" id="seg"><span class="pillbg" id="pillbg"></span>
+      <button type="button" data-f="open" aria-pressed="true">Open</button><button type="button" data-f="sos" aria-pressed="false">SOS</button>
+      <button type="button" data-f="help" aria-pressed="false">Reports</button><button type="button" data-f="resolved" aria-pressed="false">Resolved</button>
+    </div>
+    <input id="search" type="search" placeholder="Search name, phone, passport, city" aria-label="Search">
+    <div class="cases" id="cases"></div>
+  </main>
+
+  <main class="view" id="v-map" hidden>
+    <div class="legend"><span><i style="background:var(--sos)"></i>Open SOS</span><span><i style="background:var(--warn)"></i>No contact</span><span><i style="background:var(--brand)"></i>Last known position</span></div>
+    <div id="bigmap" role="img" aria-label="Map of workers"></div>
+  </main>
+
+  <main class="view" id="v-workers" hidden>
+    <input id="wsearch" type="search" placeholder="Search workers" aria-label="Search workers">
+    <div class="cases" id="wlist"></div>
+  </main>
+
+  <main class="view" id="v-me" hidden>
+    <div class="card">
+      <h2>Your name</h2>
+      <p class="small muted">Workers see this name on your messages.</p>
+      <input id="staffName" placeholder="e.g. Asha, Resource Centre">
+      <button class="btn primary" id="saveName" type="button">Save name</button>
+    </div>
+    <div class="card">
+      <h2>Alerts</h2>
+      <label class="check"><input type="checkbox" id="optSound"><span>Play an alarm sound for new SOS</span></label>
+      <label class="check"><input type="checkbox" id="optVibe" checked><span>Vibrate for new SOS</span></label>
+      <button class="btn" id="notifBtn" type="button">Allow phone notifications</button>
+      <p class="small muted" id="notifMsg"></p>
+    </div>
+    <div class="card">
+      <h2>More</h2>
+      <a class="btn" href="dashboard.html">Open the desktop Case Desk</a>
+      <button class="btn" id="signOut" type="button" hidden>Sign out</button>
+      <button class="btn" id="resetDemo" type="button" hidden>Reset demo data</button>
+      <p class="small muted" id="orgName"></p>
+    </div>
+  </main>
+</div>
+
+<nav class="nav" id="nav" hidden aria-label="Main">
+  <div class="nav-in">
+    <span class="ind" id="ind"></span>
+    <button type="button" data-go="alerts"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>Alerts<span class="count" id="navCount" hidden></span></button>
+    <button type="button" data-go="map"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
+    <button type="button" data-go="workers"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-3.5 3.8-5 7-5s6 1.5 7 5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 15c2 .6 3.4 2.2 4 5"/></svg>Workers</button>
+    <button type="button" data-go="me"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Me</button>
+  </div>
+</nav>
+
+<div id="panelHost"></div>
+<div id="alarmHost"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script src="demo-data.js"></script>
+<script>
+(function () {
+  const C = window.TUCTA_CONFIG, API = window.TuctaAPI, ls = API.ls;
+  const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const CATS = { wages: "Unpaid wages", passport: "Passport taken", abuse: "Abuse", health: "Sick or injured", contract: "Contract problem", legal: "Legal help", return: "Return home", other: "Other" };
+  const STATUS = { new: "New", in_progress: "Helping", resolved: "Resolved" };
+  const LATE_H = C.NO_CONTACT_HOURS || 72;
+  const QUICK = [
+    "Tumepokea SOS yako. Tunakupigia simu sasa hivi.",
+    "Kaa mahali salama. Msaada unakuja.",
+    "Uko salama sasa? Jibu NDIO au HAPANA.",
+    "Tafadhali tupigie simu: " + C.HOTLINE_NUMBER,
+    "Tumewasiliana na ubalozi wa Tanzania.",
+    "Tumewasiliana na wakala wako wa ajira.",
+    "Tafadhali tutumie picha ya mkataba wako."
+  ];
+  const I = {
+    sos: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+    wages: '<path d="M3 7h18v10H3z"/><circle cx="12" cy="12" r="2.5"/>', passport: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M9 16h6"/>',
+    abuse: '<path d="M12 3l9 4v5c0 5-3.8 8.6-9 9.5C6.8 20.6 3 17 3 12V7z"/><path d="M12 8v5M12 16v.5"/>', health: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+    contract: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>', legal: '<path d="M12 4v16M5 20h14M6 8h12"/><path d="M6 8l-3 6a3 3 0 0 0 6 0zM18 8l-3 6a3 3 0 0 0 6 0z"/>',
+    return: '<path d="M3 15l18-6-6 12-3-5z"/>', other: '<circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/>',
+    checkin: '<path d="M5 12l5 5 9-10"/>', back: '<path d="M15 5l-7 7 7 7"/>', phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+    sms: '<path d="M4 5h16v11H9l-5 4z"/>', wa: '<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/>', nav: '<path d="M3 11l18-8-8 18-2-8z"/>', send: '<path d="M4 12l16-8-6 16-2-6z"/>'
+  };
+  const svg = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[k] || I.other}</svg>`;
+
+  let events = [], replies = [], workers = [], filter = "open", view = "alerts", openId = null;
+  let seen = null, fresh = new Set(), bigmap = null, bigLayer = null, pmap = null;
+  const viewed = ls.get("thc_case_viewed", {});
+  const settings = Object.assign({ name: "", sound: false, vibe: true }, ls.get("thc_staff_settings", {}));
+
+  /* ---------- helpers ---------- */
+  function toast(m) { const el = $("#toast"); el.hidden = true; void el.offsetWidth; el.textContent = m; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
+  function ago(iso) { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " d ago"; }
+  const fmt = iso => iso ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
+  const ref = id => String(id).slice(0, 8).toUpperCase();
+  const isCase = e => e.kind === "sos" || e.kind === "help";
+  const digits = p => String(p || "").replace(/[^\d+]/g, "");
+  const gmaps = (a, b) => `https://www.google.com/maps?q=${a},${b}`;
+  const title = e => e.kind === "sos" ? "SOS emergency" : e.kind === "help" ? (CATS[e.category] || "Report") : e.kind === "checkin" ? "Safe check-in" : "Registration";
+  const vibrate = p => { try { settings.vibe && navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+  const unread = e => replies.some(r => r.event_id === e.id && r.sender === "worker" && r.created_at > (viewed[e.id] || ""));
+
+  /* ---------- sound: a short two-tone alarm made in the browser ---------- */
+  let audio = null;
+  function unlockAudio() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { audio = null; } }
+  function alarmSound() {
+    if (!settings.sound || !audio) return;
+    const now = audio.currentTime;
+    for (let i = 0; i < 6; i++) {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = "square"; o.frequency.value = i % 2 ? 660 : 880;
+      g.gain.setValueAtTime(.0001, now + i * .22); g.gain.exponentialRampToValueAtTime(.18, now + i * .22 + .02); g.gain.exponentialRampToValueAtTime(.0001, now + i * .22 + .2);
+      o.connect(g).connect(audio.destination); o.start(now + i * .22); o.stop(now + i * .22 + .21);
+    }
+  }
+  function renderSoundBtn() { $("#soundBtn").setAttribute("aria-pressed", String(settings.sound)); $("#optSound").checked = settings.sound; $("#optVibe").checked = settings.vibe; }
+  function saveSettings() { ls.set("thc_staff_settings", settings); renderSoundBtn(); }
+  $("#soundBtn").onclick = () => { unlockAudio(); settings.sound = !settings.sound; saveSettings(); toast(settings.sound ? "Alarm sound on" : "Alarm sound off"); if (settings.sound) alarmSound(); };
+  $("#optSound").onchange = e => { unlockAudio(); settings.sound = e.target.checked; saveSettings(); };
+  $("#optVibe").onchange = e => { settings.vibe = e.target.checked; saveSettings(); };
+  $("#notifBtn").onclick = async () => {
+    if (!("Notification" in window)) { $("#notifMsg").textContent = "This phone's browser does not support notifications. Install the app to the home screen and try again."; return; }
+    const p = await Notification.requestPermission().catch(() => "denied");
+    $("#notifMsg").textContent = p === "granted" ? "Notifications are on while THC Centre is open." : "Notifications were not allowed. You can change this in the phone's settings.";
+  };
+
+  /* ---------- data ---------- */
+  function deriveWorkers() {
+    const m = new Map();
+    for (const e of events.slice().sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+      const w = m.get(e.worker_id) || { id: e.worker_id, profile: {}, last: null, lastLoc: null, open: 0, example: !!e.example };
+      if (e.worker) w.profile = e.worker; w.last = e.created_at; if (e.lat != null) w.lastLoc = e; m.set(e.worker_id, w);
+    }
+    for (const e of events) if (isCase(e) && e.status !== "resolved") m.get(e.worker_id).open++;
+    workers = [...m.values()].sort((a, b) => b.last.localeCompare(a.last));
+  }
+  const isLate = w => (Date.now() - new Date(w.last)) / 3600000 > LATE_H;
+  async function load(kind) {
+    try {
+      if (kind !== "replies") events = await API.listEvents();
+      replies = await API.listReplies();
+    } catch (err) { $("#liveTxt").textContent = "Offline"; return; }
+    $("#liveTxt").textContent = "Live";
+    if (seen) {
+      fresh = new Set(events.filter(e => !seen.has(e.id) && isCase(e)).map(e => e.id));
+      const sos = events.find(e => fresh.has(e.id) && e.kind === "sos");
+      if (sos) raiseAlarm(sos);
+      else if (fresh.size) { vibrate(80); toast("New report from " + ((events.find(e => fresh.has(e.id)).worker || {}).full_name || "a worker")); }
+    }
+    seen = new Set(events.map(e => e.id));
+    deriveWorkers(); renderAll();
+  }
+
+  /* ---------- alarm ---------- */
+  function raiseAlarm(e) {
+    const p = e.worker || {};
+    vibrate([400, 150, 400, 150, 400]); alarmSound();
+    $("#alarmHost").innerHTML = `<div class="alarm" role="alert"><b>NEW SOS</b><button type="button" id="alarmOpen">Open</button><span>${esc(p.full_name || "Worker")} · ${esc([p.city, p.country].filter(Boolean).join(", "))}</span></div>`;
+    $("#alarmOpen").onclick = () => { $("#alarmHost").innerHTML = ""; openCase(e.id); };
+    setTimeout(() => { $("#alarmHost").innerHTML = ""; }, 20000);
+    try { if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification("THC Centre: NEW SOS", { body: `${p.full_name || "Worker"}, ${p.city || ""} ${p.country || ""}`, tag: e.id, requireInteraction: true }); } catch (err) {}
+  }
+
+  /* ---------- render ---------- */
+  function visible() {
+    const q = $("#search").value.trim().toLowerCase();
+    return events.filter(e => {
+      if (!isCase(e)) return false;
+      if (filter === "open" && e.status === "resolved") return false;
+      if (filter === "sos" && (e.kind !== "sos" || e.status === "resolved")) return false;
+      if (filter === "help" && (e.kind !== "help" || e.status === "resolved")) return false;
+      if (filter === "resolved" && e.status !== "resolved") return false;
+      if (q) { const p = e.worker || {}; if (![p.full_name, p.phone, p.passport_no, p.city, p.country, p.employer, e.message].join(" ").toLowerCase().includes(q)) return false; }
+      return true;
+    }).sort((a, b) => {
+      const pri = e => (e.kind === "sos" && e.status !== "resolved") ? 0 : unread(e) ? 1 : e.status === "new" ? 2 : e.status === "in_progress" ? 3 : 4;
+      return pri(a) - pri(b) || b.created_at.localeCompare(a.created_at);
+    });
+  }
+  function renderSummary() {
+    const s = events.filter(e => e.kind === "sos" && e.status !== "resolved").length;
+    $("#s_sos b").textContent = s; $("#s_sos").classList.toggle("hot", s > 0);
+    $("#s_help b").textContent = events.filter(e => e.kind === "help" && e.status !== "resolved").length;
+    $("#s_late b").textContent = workers.filter(isLate).length;
+    const n = $("#navCount"); n.hidden = !s; n.textContent = s;
+    document.title = (s ? `(${s}) ` : "") + "THC Centre";
+  }
+  function caseCard(e) {
+    const p = e.worker || {}, sos = e.kind === "sos" && e.status !== "resolved";
+    return `<button type="button" class="cc ${sos ? "sos" : ""} ${fresh.has(e.id) ? "fresh" : ""}" data-id="${esc(e.id)}">
+      <span class="ic">${svg(e.kind === "help" ? e.category : e.kind)}</span>
+      <span class="nm">${esc(p.full_name || "Unknown worker")}</span><span class="tm">${ago(e.created_at)}</span>
+      <span class="wt">${esc(title(e))}${e.message ? " · " + esc(e.message.slice(0, 60)) + (e.message.length > 60 ? "…" : "") : ""}</span>
+      <span class="wh"><span class="st ${e.status}">${STATUS[e.status]}</span>${esc([p.city, p.country].filter(Boolean).join(", "))}${e.lat == null ? " · no GPS" : ""}${e.channel === "sms" ? " · via SMS" : ""}${unread(e) ? `<span class="msgdot">New message</span>` : ""}${e.example ? `<span class="st ex">Example</span>` : ""}</span>
+    </button>`;
+  }
+  function renderCases() {
+    const items = visible();
+    $("#cases").innerHTML = items.length ? items.map(caseCard).join("") : `<div class="empty">Nothing here. New SOS alerts and reports from the THC app appear instantly.</div>`;
+  }
+  function renderWorkers() {
+    const q = $("#wsearch").value.trim().toLowerCase();
+    const list = workers.filter(w => !q || [w.profile.full_name, w.profile.phone, w.profile.city, w.profile.country, w.profile.passport_no].join(" ").toLowerCase().includes(q))
+      .sort((a, b) => (isLate(b) - isLate(a)) || b.last.localeCompare(a.last));
+    $("#wlist").innerHTML = list.length ? list.map(w => `<button type="button" class="wk" data-w="${esc(w.id)}">
+      <b>${esc(w.profile.full_name || "—")}</b><span class="${isLate(w) ? "late" : "s"}">${isLate(w) ? "No contact " : ""}${ago(w.last)}</span>
+      <span class="s">${esc([w.profile.city, w.profile.country].filter(Boolean).join(", "))} · <span class="mono">${esc(w.profile.phone || "")}</span></span>
+      <span class="s">${w.open ? w.open + " open" : ""}${w.example ? ' <span class="st ex">Example</span>' : ""}</span></button>`).join("") : `<div class="empty">No workers yet.</div>`;
+  }
+  function renderBigMap() {
+    if (!window.L) { $("#bigmap").innerHTML = `<div class="empty">The map could not load. Open a case to use its map links.</div>`; return; }
+    if (!bigmap) { bigmap = L.map("bigmap").setView([24, 50], 4); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(bigmap); bigLayer = L.layerGroup().addTo(bigmap); }
+    bigLayer.clearLayers();
+    const css = getComputedStyle(document.documentElement), pts = [];
+    for (const w of workers) {
+      const l = w.lastLoc; if (!l) continue;
+      const sos = events.some(e => e.worker_id === w.id && e.kind === "sos" && e.status !== "resolved");
+      L.circleMarker([l.lat, l.lng], { radius: sos ? 11 : 8, color: "#fff", weight: 2, fillOpacity: 1, fillColor: css.getPropertyValue(sos ? "--sos" : isLate(w) ? "--warn" : "--brand").trim() })
+        .addTo(bigLayer).bindTooltip(`${esc(w.profile.full_name || "Worker")} · ${ago(w.last)}`).on("click", () => openWorker(w.id));
+      pts.push([l.lat, l.lng]);
+    }
+    if (pts.length && !renderBigMap.fit) { bigmap.fitBounds(pts, { padding: [30, 30], maxZoom: 6 }); renderBigMap.fit = true; }
+    setTimeout(() => bigmap.invalidateSize(), 60);
+  }
+  let panelSig = "";
+  const sigOf = id => { const e = events.find(x => x.id === id) || {}; return [e.status, e.staff_note, replies.filter(r => r.event_id === id).length].join("|"); };
+  function renderAll() {
+    renderSummary(); renderCases(); renderWorkers(); if (view === "map") renderBigMap();
+    if (openId && sigOf(openId) !== panelSig) renderPanel(false);   // only redraw the open case when something in it changed
+  }
+
+  /* ---------- navigation ---------- */
+  const VIEWS = ["alerts", "map", "workers", "me"];
+  function go(v) {
+    view = v;
+    VIEWS.forEach(x => { const el = $("#v-" + x); if (x === v) { el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; } else el.hidden = true; });
+    $$(".nav [data-go]").forEach(b => b.dataset.go === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+    $("#ind").style.transform = `translateX(${VIEWS.indexOf(v) * 100}%)`;
+    if (v === "map") renderBigMap();
+  }
+  $$(".nav [data-go]").forEach(b => b.onclick = () => { go(b.dataset.go); vibrate(8); });
+  function setFilter(f) {
+    filter = f; const i = ["open", "sos", "help", "resolved"].indexOf(f);
+    $$("#seg [data-f]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === f)));
+    $("#pillbg").style.transform = `translateX(${i * 100}%)`; fresh.clear(); renderCases();
+  }
+  $("#seg").onclick = e => { const b = e.target.closest("[data-f]"); if (b) setFilter(b.dataset.f); };
+  $("#s_sos").onclick = () => { go("alerts"); setFilter("sos"); };
+  $("#s_help").onclick = () => { go("alerts"); setFilter("help"); };
+  $("#s_late").onclick = () => go("workers");
+  $("#search").oninput = renderCases; $("#wsearch").oninput = renderWorkers;
+  $("#cases").onclick = e => { const b = e.target.closest("[data-id]"); if (b) openCase(b.dataset.id); };
+  $("#wlist").onclick = e => { const b = e.target.closest("[data-w]"); if (b) openWorker(b.dataset.w); };
+  function openWorker(wid) {
+    const c = events.find(e => e.worker_id === wid && isCase(e) && e.status !== "resolved") || events.find(e => e.worker_id === wid && e.kind !== "register") || events.find(e => e.worker_id === wid);
+    if (c) openCase(c.id);
+  }
+
+  /* ---------- case panel ---------- */
+  function openCase(id) {
+    openId = id; fresh.clear();
+    $("#panelHost").innerHTML = `<div class="panel" role="dialog" aria-modal="true"><div class="pbar"><button class="iconbtn" type="button" id="pBack" aria-label="Back">${svg("back")}</button><h2 id="pTitle"></h2><span id="pSt"></span></div><div class="pin" id="pBody"></div></div>`;
+    $("#pBack").onclick = closeCase;
+    pmap = null; renderPanel(true);
+    history.pushState({ case: id }, "");
+  }
+  function closeCase(fromPop) {
+    const p = $(".panel"); if (!p) return;
+    openId = null; p.classList.add("closing"); setTimeout(() => { $("#panelHost").innerHTML = ""; pmap = null; }, 260);
+    if (fromPop !== true && history.state && history.state.case) history.back();
+    renderCases();
+  }
+  window.addEventListener("popstate", () => { if (openId) closeCase(true); });
+
+  function renderPanel(first) {
+    const e = events.find(x => x.id === openId); if (!e) return;
+    const p = e.worker || {};
+    viewed[e.id] = new Date().toISOString(); ls.set("thc_case_viewed", viewed); panelSig = sigOf(e.id);
+    $("#pTitle").textContent = p.full_name || "Worker";
+    $("#pSt").innerHTML = isCase(e) ? `<span class="st ${e.status}">${STATUS[e.status]}</span>` : "";
+    const thread = replies.filter(r => r.event_id === e.id);
+    const trail = events.filter(x => x.worker_id === e.worker_id && x.lat != null).slice(0, 6);
+    const phone = digits(p.phone);
+    const kv = rows => rows.filter(r => r[1]).map(r => `<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join("");
+    const keepDraft = $("#msg") ? $("#msg").value : "";
+    const keepNote = $("#note") && document.activeElement === $("#note") ? $("#note").value : null;
+    $("#pBody").innerHTML = `
+      <div class="hero">
+        <span class="row" style="gap:6px"><span class="st ${e.kind === "sos" ? "new" : "ex"}">${e.kind === "sos" ? "SOS" : e.kind === "help" ? "Report" : "Check-in"}</span><span class="small muted mono">Ref ${ref(e.id)}</span>${e.example ? '<span class="st ex">Example</span>' : ""}</span>
+        <h1>${esc(title(e))}</h1>
+        <span class="small muted">${fmt(e.created_at)} · ${ago(e.created_at)}${e.channel === "sms" ? " · logged from SMS" : ""}</span>
+      </div>
+      <div class="acts">
+        <a class="act call ${phone ? "" : "off"}" href="tel:${phone}"><span class="ci">${svg("phone")}</span>Call</a>
+        <a class="act ${phone ? "" : "off"}" href="sms:${phone}"><span class="ci">${svg("sms")}</span>SMS</a>
+        <a class="act ${phone ? "" : "off"}" href="https://wa.me/${phone.replace("+", "")}" target="_blank" rel="noopener"><span class="ci">${svg("wa")}</span>WhatsApp</a>
+        <a class="act ${e.lat != null ? "" : "off"}" href="${e.lat != null ? gmaps(e.lat, e.lng) : "#"}" target="_blank" rel="noopener"><span class="ci">${svg("nav")}</span>Map</a>
+      </div>
+      <div class="phones">${p.phone ? `<span>Abroad <b>${esc(p.phone)}</b></span>` : ""}${p.phone_tz ? `<span>Tanzania <b>${esc(p.phone_tz)}</b></span>` : ""}${p.emergency_phone ? `<span>Family <b>${esc(p.emergency_phone)}</b></span>` : ""}</div>
+      ${isCase(e) ? `<div class="stepper" id="stepper">${Object.entries(STATUS).map(([k, v]) => `<button type="button" class="${k}" data-s="${k}" aria-pressed="${e.status === k}">${v}</button>`).join("")}</div>` : ""}
+      <div class="card" style="padding:12px">
+        ${e.lat != null ? `<div id="pmap"></div>
+          <div class="row" style="justify-content:space-between"><span class="mono">${e.lat.toFixed(5)}, ${e.lng.toFixed(5)}</span><button class="btn" type="button" id="copyC" style="padding:5px 10px">Copy</button></div>
+          <span class="small muted">±${esc(e.accuracy ?? "?")} m · GPS at ${fmt(e.loc_time || e.created_at)}${e.place ? " · " + esc(e.place) : ""}</span>`
+          : `<p class="note warn">No GPS position with this report. Use the home address and call the worker.</p>`}
+        <span class="small"><b>Home:</b> ${esc(p.address || "—")}</span>
+      </div>
+      ${isCase(e) ? `<div style="display:grid;gap:8px">
+        <span class="sh">Messages with ${esc((p.full_name || "worker").split(" ")[0])}</span>
+        <div class="thread" id="thread">
+          <div class="bub report">${esc(e.kind === "sos" ? "SOS pressed" : title(e))}${e.message ? "<br>" + esc(e.message) : ""}<small>${fmt(e.created_at)}</small></div>
+          ${thread.map(r => `<div class="bub ${r.sender}">${esc(r.body)}<small>${r.sender === "staff" ? esc(r.staff_name || "Centre") + " · " : ""}${fmt(r.created_at)}</small></div>`).join("")}
+        </div>
+        <div class="quick" id="quick">${QUICK.map((q, i) => `<button type="button" data-q="${i}">${esc(q)}</button>`).join("")}</div>
+        <div class="composer"><textarea id="msg" rows="1" placeholder="Write to the worker"></textarea><button class="send" type="button" id="sendMsg" aria-label="Send">${svg("send")}</button></div>
+        <span class="small muted">Shows in the worker's THC app. If they have no internet, also call or SMS.</span>
+      </div>` : ""}
+      <details class="card"><summary>Worker details</summary>
+        <dl class="kv" style="margin-top:10px">${kv([["Name", p.full_name], ["Passport", p.passport_no], ["Country", p.country], ["City", p.city], ["Work", p.job], ["Employer", p.employer], ["Employer phone", p.employer_phone], ["Emergency", [p.emergency_name, p.emergency_phone].filter(Boolean).join(" · ")]])}</dl>
+        ${trail.length > 1 ? `<p class="sh" style="margin-top:10px">Recent positions</p>${trail.map(x => `<p class="small"><a class="mono" href="${gmaps(x.lat, x.lng)}" target="_blank" rel="noopener">${x.lat.toFixed(4)}, ${x.lng.toFixed(4)}</a> · ${fmt(x.created_at)}</p>`).join("")}` : ""}
+      </details>
+      ${isCase(e) ? `<label>Private staff notes<textarea id="note" rows="3" placeholder="Not shown to the worker">${esc(keepNote ?? e.staff_note ?? "")}</textarea></label><button class="btn" type="button" id="saveNote">Save notes</button>` : ""}`;
+    if ($("#msg")) $("#msg").value = keepDraft;
+    // map
+    if (e.lat != null && window.L) {
+      pmap = L.map("pmap", { zoomControl: false, attributionControl: true }).setView([e.lat, e.lng], 16);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(pmap);
+      const red = getComputedStyle(document.documentElement).getPropertyValue("--sos").trim();
+      L.circle([e.lat, e.lng], { radius: Math.max(e.accuracy || 20, 15), color: red, weight: 1, fillOpacity: .12 }).addTo(pmap);
+      L.circleMarker([e.lat, e.lng], { radius: 9, color: "#fff", weight: 3, fillColor: red, fillOpacity: 1 }).addTo(pmap);
+      setTimeout(() => pmap && pmap.invalidateSize(), 380);
+    }
+    const th = $("#thread"); if (th && first) setTimeout(() => th.lastElementChild && th.lastElementChild.scrollIntoView({ block: "nearest" }), 400);
+    // wire
+    const cc = $("#copyC"); if (cc) cc.onclick = () => navigator.clipboard.writeText(`${e.lat}, ${e.lng}`).then(() => toast("Copied")).catch(() => toast(`${e.lat}, ${e.lng}`));
+    const sp = $("#stepper"); if (sp) sp.onclick = ev => { const b = ev.target.closest("[data-s]"); if (b && b.dataset.s !== e.status) setStatus(e, b.dataset.s); };
+    const qk = $("#quick"); if (qk) qk.onclick = ev => { const b = ev.target.closest("[data-q]"); if (b) { $("#msg").value = QUICK[+b.dataset.q]; $("#msg").focus(); } };
+    const sm = $("#sendMsg"); if (sm) sm.onclick = () => sendMsg(e);
+    const sn = $("#saveNote"); if (sn) sn.onclick = async () => { try { await API.updateEvent(e.id, { staff_note: $("#note").value.trim() || null }); e.staff_note = $("#note").value.trim() || null; toast("Notes saved"); } catch (err) { toast("Could not save notes"); } };
+  }
+  async function setStatus(e, s) {
+    const old = e.status; e.status = s; vibrate(15); renderPanel(false); renderSummary();
+    try { await API.updateEvent(e.id, { status: s }); toast(s === "resolved" ? "Case resolved" : s === "in_progress" ? "Marked as helping. The worker sees this." : "Marked as new"); }
+    catch (err) { e.status = old; renderPanel(false); toast("Could not update. Check the connection."); }
+  }
+  async function sendMsg(e) {
+    const body = $("#msg").value.trim(); if (!body) return;
+    const btn = $("#sendMsg"); btn.disabled = true;
+    try {
+      const row = await API.staffReply({ worker_id: e.worker_id, event_id: e.id, body, staff_name: settings.name || "Resource Centre" });
+      replies.push(row); $("#msg").value = ""; vibrate(10);
+      if (e.status === "new") await setStatus(e, "in_progress"); else renderPanel(false);
+      const th = $("#thread"); th && th.lastElementChild && th.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (err) { toast("Message not sent. Check the connection."); }
+    finally { const b = $("#sendMsg"); if (b) b.disabled = false; }
+  }
+
+  /* ---------- me ---------- */
+  $("#staffName").value = settings.name;
+  $("#saveName").onclick = () => { settings.name = $("#staffName").value.trim(); saveSettings(); toast("Name saved"); };
+  $("#orgName").textContent = C.ORG_NAME;
+  $("#signOut").onclick = async () => { await API.auth.signOut(); location.reload(); };
+  $("#resetDemo").onclick = () => { API.clearDemo(); const d = window.thcDemo(); API.seedDemo(d.events); API.seedDemoReplies(d.replies); seen = null; load(); toast("Demo data reset"); };
+  $("#loginForm").onsubmit = async ev => {
+    ev.preventDefault(); $("#lgErr").hidden = true;
+    try { await API.auth.signIn($("#lg_email").value.trim(), $("#lg_pass").value); start(); }
+    catch (err) { $("#lgErr").hidden = false; $("#lgErr").textContent = "Sign-in failed: " + (err.message || "check your email and password"); }
+  };
+  document.addEventListener("click", unlockAudio, { once: true });
+
+  /* ---------- start ---------- */
+  async function start() {
+    renderSoundBtn();
+    let session = null;
+    try { session = await API.auth.session(); } catch (e) { toast("Could not reach the online database"); }
+    if (!session) { $("#loginView").hidden = false; return; }
+    $("#loginView").hidden = true; $("#nav").hidden = false;
+    $("#demoNote").hidden = API.LIVE; $("#signOut").hidden = !API.LIVE; $("#resetDemo").hidden = API.LIVE;
+    if (!API.LIVE) { const d = window.thcDemo(); if (API.seedDemo(d.events)) API.seedDemoReplies(d.replies); }
+    go("alerts");
+    await load();
+    API.subscribe(kind => load(kind));
+    setInterval(() => { if (!API.LIVE) load(); else { renderSummary(); renderCases(); } }, API.LIVE ? 60000 : 5000);
+  }
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  start();
+})();
+</script>

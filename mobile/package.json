@@ -1,0 +1,19 @@
+{
+  "name": "thc-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Native Android and iOS builds of THC (workers) and THC Centre (call centre).",
+  "scripts": {
+    "prepare:worker": "node scripts/prepare.mjs worker",
+    "prepare:centre": "node scripts/prepare.mjs centre"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

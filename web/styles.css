@@ -1,0 +1,104 @@
+/* Layout: Apple-style. Light grey canvas (#F5F5F7), white borderless cards, frosted-glass bars,
+   blue pill buttons (#0071E3), near-black type (#1D1D1F). Red is reserved for SOS.
+   Day theme only: the apps stay white whatever the phone's dark-mode setting. */
+:root {
+  --bg: #F5F5F7;
+  --surface: #FFFFFF;
+  --surface-2: #E8E8ED;
+  --ink: #1D1D1F;
+  --muted: #6E6E73;
+  --line: #D2D2D7;
+  --brand: #0066CC;          /* link blue */
+  --brand-bg: #0071E3;       /* button blue */
+  --on-brand: #FFFFFF;
+  --sos: #FF3B30;
+  --sos-deep: #D70015;
+  --ok: #248A3D;
+  --ok-fill: #34C759;
+  --warn: #C93400;
+  --focus: #0071E3;
+  --navbg: rgba(251, 251, 253, .8);
+  --shadow: 0 2px 12px rgba(0, 0, 0, .06);
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --radius: 18px;
+  color-scheme: light;   /* always the white day theme, even when the phone is in dark mode */
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 17px; line-height: 1.47; letter-spacing: -.022em; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; text-wrap: balance; margin: 0; letter-spacing: -.025em; }
+h2 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+:focus-visible { outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 35%, transparent); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.muted { color: var(--muted); }
+.small { font-size: .82rem; letter-spacing: -.01em; }
+.eyebrow { font-size: .8rem; font-weight: 600; color: var(--muted); letter-spacing: -.01em; }
+
+/* frosted top bar (Case Desk) */
+.topbar {
+  background: var(--navbg); color: var(--ink); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; position: sticky; top: 0; z-index: 20;
+}
+.topbar-in { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand-name { display: grid; line-height: 1.1; min-width: 0; }
+.brand-name b { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: -.02em; }
+.brand-name span { font-size: .75rem; color: var(--muted); }
+.top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 11px; font-size: .75rem; font-weight: 600; white-space: nowrap; background: var(--surface-2); color: var(--ink); }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.on::before { background: var(--ok-fill); }
+.pill.off::before { background: var(--sos); }
+.pill.plain::before { display: none; }
+
+/* generic */
+.wrap { max-width: 600px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 48px; display: grid; gap: 16px; }
+.card { background: var(--surface); border: 0; border-radius: var(--radius); padding: 18px; display: grid; gap: 12px; min-width: 0; box-shadow: var(--shadow); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 460px) { .grid2 { grid-template-columns: 1fr; } }
+
+label { display: grid; gap: 6px; font-size: .82rem; font-weight: 600; color: var(--ink); }
+input, select, textarea {
+  width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 14px; font-weight: 400; font-size: 1rem;
+  transition: border-color .2s, box-shadow .2s;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 25%, transparent); }
+textarea { resize: vertical; min-height: 90px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: .92rem; }
+.check input { width: 22px; height: 22px; flex: none; margin-top: 1px; accent-color: var(--brand-bg); }
+
+/* buttons: filled blue pill + outlined blue pill, like apple.com */
+.btn { border: 1px solid var(--brand); background: transparent; color: var(--brand); border-radius: 980px; padding: 9px 20px; font-weight: 400; font-size: .95rem; cursor: pointer;
+       display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background .2s, color .2s, transform .15s; text-decoration: none; }
+.btn:hover { background: var(--brand); color: #fff; text-decoration: none; }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--brand-bg); color: #fff; border-color: var(--brand-bg); }
+.btn.primary:hover { background: #0077ED; }
+.btn.danger { background: var(--sos); color: #fff; border-color: var(--sos); font-weight: 500; }
+.btn.block { width: 100%; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.note { border-radius: 14px; padding: 12px 14px; font-size: .88rem; background: var(--surface); color: var(--muted); }
+.note.ok { color: var(--ok); }
+.note.bad { color: var(--sos); background: color-mix(in srgb, var(--sos) 8%, var(--surface)); }
+.note.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 0; background: var(--surface-2); border-radius: 999px; padding: 8px 14px; cursor: pointer; font-size: .88rem; }
+.chip[aria-pressed="true"] { background: var(--brand-bg); color: #fff; }
+
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: .92rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: color-mix(in srgb, var(--ink) 88%, transparent);
+         color: var(--bg); padding: 11px 18px; border-radius: 980px; font-size: .9rem; font-weight: 500; z-index: 60; max-width: calc(100% - 32px); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

@@ -1,0 +1,470 @@
+<title>THC Case Desk</title>
+<meta name="theme-color" content="#F5F5F7">
+<meta name="color-scheme" content="light only">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* minimal Leaflet layout rules, so the map still lays out if its stylesheet is unavailable */
+  .leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-layer{position:absolute;left:0;top:0}
+  .leaflet-container{overflow:hidden;background:var(--surface-2)}
+  .leaflet-tile{visibility:hidden}.leaflet-tile-loaded{visibility:inherit}
+  .leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important}
+  .leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-popup-pane{z-index:700}
+  .leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-right{right:0}
+  .leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+  .leaflet-top .leaflet-control{margin-top:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{float:right;margin-right:10px}
+  .leaflet-bar a{display:block;width:30px;height:30px;line-height:30px;text-align:center;background:#fff;color:#000;text-decoration:none;font-weight:700}
+  .leaflet-control-attribution{background:rgba(255,255,255,.8);color:#333;padding:0 5px;font-size:11px}
+  .leaflet-interactive{cursor:pointer}.leaflet-zoom-animated{transform-origin:0 0}
+
+  .desk { max-width: 1200px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 48px; display: grid; gap: 16px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 2px; text-align: left; cursor: pointer; }
+  .stat b { font-family: var(--font-display); font-size: 1.9rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stat.sos b { color: var(--sos); } .stat.warn b { color: var(--warn); }
+  .stat.sos.hot { border-color: var(--sos); box-shadow: inset 4px 0 0 var(--sos); }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+  .tabs button { background: none; border: 0; padding: 10px 14px; font-weight: 700; cursor: pointer; color: var(--muted); border-bottom: 3px solid transparent; }
+  .tabs button[aria-selected="true"] { color: var(--brand); border-bottom-color: var(--brand); }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .toolbar input { max-width: 260px; }
+  .toolbar .spacer { flex: 1; }
+  .split { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+  .list { display: grid; gap: 8px; max-height: 76vh; overflow: auto; padding-right: 2px; }
+  .case { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: grid; gap: 3px; position: relative; }
+  .case[aria-current="true"] { border-color: var(--brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 30%, transparent); }
+  .case.sos { box-shadow: inset 4px 0 0 var(--sos); }
+  .case.sos[aria-current="true"] { box-shadow: inset 4px 0 0 var(--sos), 0 0 0 2px color-mix(in srgb, var(--brand) 30%, transparent); }
+  .case .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .case .who { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .case .when { font-size: .78rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .case .what { font-size: .85rem; }
+  .case .where { font-size: .8rem; color: var(--muted); }
+  .tag { display: inline-block; border-radius: 6px; padding: 1px 7px; font-size: .72rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; border: 1px solid currentColor; }
+  .tag.sos { color: var(--sos); } .tag.help { color: var(--brand); } .tag.checkin { color: var(--ok); }
+  .tag.new { color: var(--sos); } .tag.in_progress { color: var(--warn); } .tag.resolved { color: var(--ok); }
+  .tag.example { color: var(--muted); }
+  .right { display: grid; gap: 16px; min-width: 0; }
+  #map { height: 340px; border-radius: var(--radius); border: 1px solid var(--line); }
+  .detail h3 { font-size: 1.25rem; font-weight: 800; }
+  .section-h { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; color: var(--muted); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 620px) { .two { grid-template-columns: 1fr; } }
+  .trail { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .82rem; }
+  .trail li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--line); padding-block: 4px; flex-wrap: wrap; }
+  .tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  tbody tr { cursor: pointer; } tbody tr:hover { background: var(--surface-2); }
+  td.late { color: var(--warn); font-weight: 700; }
+  .empty { padding: 24px; text-align: center; color: var(--muted); }
+  .thread { display: grid; gap: 6px; }
+  .bub { max-width: 80%; padding: 8px 12px; border-radius: 14px; font-size: .9rem; overflow-wrap: anywhere; }
+  .bub small { display: block; font-size: .68rem; opacity: .75; }
+  .bub.worker { background: var(--surface-2); justify-self: start; }
+  .bub.staff { background: var(--brand-bg); color: #fff; justify-self: end; }
+  .login { max-width: 380px; margin: 48px auto; }
+  dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 0; width: min(560px, calc(100% - 32px)); }
+  dialog::backdrop { background: rgba(5, 10, 25, .55); }
+  dialog form { padding: 18px; display: grid; gap: 12px; }
+  .case { transition: border-color .2s, transform .15s cubic-bezier(.2,.8,.2,1); }
+  .case:hover { transform: translateX(2px); }
+  .case.fresh { animation: caseIn .55s cubic-bezier(.34,1.56,.64,1); }
+  .case.fresh.sos { animation: caseIn .55s cubic-bezier(.34,1.56,.64,1), flash 1.2s 3; }
+  @keyframes caseIn { from { opacity: 0; transform: translateY(-14px) scale(.97); } }
+  @keyframes flash { 50% { background: color-mix(in srgb, var(--sos) 14%, var(--surface)); } }
+  .stat { transition: transform .2s cubic-bezier(.2,.8,.2,1), border-color .2s; }
+  .stat:hover { transform: translateY(-2px); }
+  .stat.sos.hot b { animation: throb 1.6s ease-in-out infinite; }
+  @keyframes throb { 50% { opacity: .55; } }
+  .detail.swap { animation: detailIn .3s cubic-bezier(.2,.8,.2,1); }
+  @keyframes detailIn { from { opacity: 0; transform: translateY(6px); } }
+  @media (prefers-reduced-motion: reduce) { .case, .stat, .detail { animation: none !important; transition: none !important; } }
+  /* ---- Apple-style finish ---- */
+  .stat { border: 0; border-radius: 18px; box-shadow: var(--shadow); padding: 16px 18px; }
+  .stat b { font-family: var(--font-display); font-weight: 700; letter-spacing: -.03em; font-size: 2.2rem; }
+  .stat .eyebrow { font-size: .82rem; }
+  .stat.sos.hot { box-shadow: 0 0 0 2px var(--sos); }
+  .tabs { border-bottom: .5px solid var(--line); }
+  .tabs button { font-weight: 500; color: var(--muted); }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+  .case { border: 0; border-radius: 16px; box-shadow: var(--shadow); }
+  .case[aria-current="true"] { box-shadow: 0 0 0 2px var(--brand-bg); }
+  .case.sos { box-shadow: inset 4px 0 0 var(--sos), var(--shadow); }
+  .case.sos[aria-current="true"] { box-shadow: inset 4px 0 0 var(--sos), 0 0 0 2px var(--brand-bg); }
+  .case .who { font-weight: 600; }
+  .tag { border: 0; text-transform: none; letter-spacing: 0; font-weight: 600; background: var(--surface-2); border-radius: 999px; padding: 2px 9px; }
+  #map { border: 0; border-radius: 18px; }
+  .detail h3 { font-size: 1.7rem; font-weight: 700; }
+  .section-h { text-transform: none; letter-spacing: -.01em; font-size: .9rem; font-weight: 600; color: var(--ink); }
+  .tablewrap { border: 0; border-radius: 18px; box-shadow: var(--shadow); }
+  th { text-transform: none; letter-spacing: 0; font-size: .78rem; font-weight: 600; }
+  .bub { border-radius: 18px; }
+  .bub.staff { background: var(--brand-bg); }
+  .bub.worker { background: var(--surface-2); color: var(--ink); }
+  dialog { border: 0; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+</style>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand-name"><b>THC <span style="font-weight:400;color:var(--muted)">Case Desk</span></b><span id="orgName"></span></div>
+    <div class="top-actions">
+      <span id="mode" class="pill plain"></span>
+      <button class="btn" id="signOut" type="button" hidden>Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main id="loginView" class="wrap login" hidden>
+  <form class="card" id="loginForm">
+    <h2>Staff sign-in</h2>
+    <p class="small muted">Only Resource Centre staff accounts can see worker cases.</p>
+    <label>Email<input id="lg_email" type="email" autocomplete="username" required></label>
+    <label>Password<input id="lg_pass" type="password" autocomplete="current-password" required></label>
+    <p id="lgErr" class="note bad" hidden></p>
+    <button class="btn primary block" type="submit">Sign in</button>
+  </form>
+</main>
+
+<main id="deskView" class="desk" hidden>
+  <p id="demoBanner" class="note small" hidden>Demo mode. Cases marked <span class="tag example">Example</span> are sample data. SOS and requests sent from the worker app in this same browser appear here within seconds. <button class="btn" id="resetDemo" type="button" style="padding:3px 10px;margin-left:6px">Reset demo data</button></p>
+
+  <section class="stats" aria-label="Summary">
+    <button class="stat sos" id="st_sos" type="button"><span class="eyebrow">Open SOS</span><b>0</b></button>
+    <button class="stat" id="st_help" type="button"><span class="eyebrow">Open help requests</span><b>0</b></button>
+    <button class="stat warn" id="st_late" type="button"><span class="eyebrow" id="lateLabel">No contact</span><b>0</b></button>
+    <button class="stat" id="st_workers" type="button"><span class="eyebrow">Registered workers</span><b>0</b></button>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab_cases" aria-selected="true" type="button">Cases</button>
+    <button role="tab" id="tab_workers" aria-selected="false" type="button">Workers</button>
+  </nav>
+
+  <section id="casesPane">
+    <div class="toolbar" style="margin-bottom:12px">
+      <select id="filter" aria-label="Filter cases" style="max-width:200px">
+        <option value="open">All open</option><option value="sos">SOS (open)</option><option value="help">Help requests (open)</option>
+        <option value="resolved">Resolved</option><option value="all">Everything incl. check-ins</option>
+      </select>
+      <input id="search" type="search" placeholder="Search name, phone, passport, city" aria-label="Search">
+      <span class="spacer"></span>
+      <button class="btn primary" id="logBtn" type="button">Log SMS or phone case</button>
+    </div>
+    <div class="split">
+      <div class="list" id="list" aria-label="Cases"></div>
+      <div class="right">
+        <div id="map" role="img" aria-label="Map of worker locations"></div>
+        <article class="card detail" id="detail"><p class="muted">Select a case to see the worker's details and location.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="workersPane" hidden>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Worker</th><th>Country</th><th>City</th><th>Phone</th><th>Employer</th><th>Last contact</th><th>Last location</th><th>Open cases</th></tr></thead>
+        <tbody id="wbody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<dialog id="logDlg">
+  <form id="logForm" method="dialog">
+    <h2>Log a case received by SMS or phone</h2>
+    <p class="small muted">Paste the SMS text to read the GPS position from it, or type the details.</p>
+    <label>SMS text or Google Maps link<textarea id="lf_raw" rows="3"></textarea></label>
+    <div class="grid2">
+      <label>Type<select id="lf_kind"><option value="sos">SOS</option><option value="help">Help request</option></select></label>
+      <label>Category<select id="lf_cat"><option value="">—</option></select></label>
+    </div>
+    <div class="grid2">
+      <label>Worker name<input id="lf_name" required></label>
+      <label>Phone<input id="lf_phone" type="tel"></label>
+    </div>
+    <div class="grid2">
+      <label>Country<input id="lf_country"></label>
+      <label>City<input id="lf_city"></label>
+    </div>
+    <div class="grid2">
+      <label>Latitude<input id="lf_lat" inputmode="decimal"></label>
+      <label>Longitude<input id="lf_lng" inputmode="decimal"></label>
+    </div>
+    <label>Notes<textarea id="lf_msg" rows="2"></textarea></label>
+    <p id="lfErr" class="note bad" hidden></p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn" value="cancel" type="button" id="lfCancel">Cancel</button>
+      <button class="btn primary" id="lfSave" type="button">Save case</button>
+    </div>
+  </form>
+</dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script src="demo-data.js"></script>
+<script>
+(function () {
+  const C = window.TUCTA_CONFIG, API = window.TuctaAPI;
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const CATS = { wages: "Unpaid wages", passport: "Passport taken", abuse: "Abuse or harassment", health: "Sick or injured", contract: "Contract problem", legal: "Legal help", return: "Help to return home", other: "Other" };
+  const KIND = { sos: "SOS", help: "Help request", checkin: "Check-in", register: "Registration" };
+  const STATUS = { new: "New", in_progress: "In progress", resolved: "Resolved" };
+  const LATE_H = C.NO_CONTACT_HOURS || 72;
+
+  let replies = [], events = [], workers = [], selected = null, map = null, layer = null, workerFilter = null, seen = null, fresh = new Set();
+
+  function toast(m) { const el = $("#toast"); el.textContent = m; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
+  const fmt = iso => iso ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
+  function ago(iso) { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " d ago"; }
+  const ref = id => String(id).slice(0, 8).toUpperCase();
+  const gmaps = (lat, lng) => `https://www.google.com/maps?q=${lat},${lng}`;
+  const osm = (lat, lng) => `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+  const isCase = e => e.kind === "sos" || e.kind === "help";
+
+  /* ---------- example data for demo mode ---------- */
+  /* ---------- derive workers ---------- */
+  function deriveWorkers() {
+    const map = new Map();
+    for (const e of events.slice().sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+      const w = map.get(e.worker_id) || { id: e.worker_id, profile: {}, last: null, lastLoc: null, open: 0, example: !!e.example };
+      if (e.worker) w.profile = e.worker;
+      w.last = e.created_at;
+      if (e.lat != null) w.lastLoc = e;
+      map.set(e.worker_id, w);
+    }
+    for (const e of events) if (isCase(e) && e.status !== "resolved") map.get(e.worker_id).open++;
+    workers = [...map.values()].sort((a, b) => b.last.localeCompare(a.last));
+  }
+  const isLate = w => (Date.now() - new Date(w.last)) / 3600000 > LATE_H;
+
+  /* ---------- rendering ---------- */
+  function visibleCases() {
+    const f = $("#filter").value, q = $("#search").value.trim().toLowerCase();
+    return events.filter(e => {
+      if (workerFilter && e.worker_id !== workerFilter) return false;
+      if (f === "all") { if (e.kind === "register") return false; }
+      else if (!isCase(e)) return false;
+      else if (f === "open" && e.status === "resolved") return false;
+      else if (f === "sos" && (e.kind !== "sos" || e.status === "resolved")) return false;
+      else if (f === "help" && (e.kind !== "help" || e.status === "resolved")) return false;
+      else if (f === "resolved" && e.status !== "resolved") return false;
+      if (q) { const p = e.worker || {}; const hay = [p.full_name, p.phone, p.phone_tz, p.passport_no, p.city, p.country, p.employer, e.message].join(" ").toLowerCase(); if (!hay.includes(q)) return false; }
+      return true;
+    }).sort((a, b) => {
+      const pri = e => (e.kind === "sos" && e.status !== "resolved") ? 0 : e.status === "new" ? 1 : e.status === "in_progress" ? 2 : 3;
+      return pri(a) - pri(b) || b.created_at.localeCompare(a.created_at);
+    });
+  }
+  function renderStats() {
+    const openSos = events.filter(e => e.kind === "sos" && e.status !== "resolved").length;
+    const openHelp = events.filter(e => e.kind === "help" && e.status !== "resolved").length;
+    $("#st_sos b").textContent = openSos; $("#st_sos").classList.toggle("hot", openSos > 0);
+    $("#st_help b").textContent = openHelp;
+    $("#st_late b").textContent = workers.filter(isLate).length;
+    $("#lateLabel").textContent = `No contact ${LATE_H} h+`;
+    $("#st_workers b").textContent = workers.length;
+    document.title = (openSos ? `(${openSos} SOS) ` : "") + "THC Case Desk";
+  }
+  function renderList() {
+    const items = visibleCases();
+    const el = $("#list");
+    const head = workerFilter ? `<div class="note small">Showing one worker. <button class="btn" id="clearW" type="button" style="padding:2px 10px">Show all</button></div>` : "";
+    if (!items.length) { el.innerHTML = head + `<div class="empty">No cases match. New SOS alerts and requests from the worker app appear here automatically.</div>`; }
+    else el.innerHTML = head + items.map(e => {
+      const p = e.worker || {};
+      const what = e.kind === "help" ? (CATS[e.category] || "Help") : e.kind === "sos" ? "Emergency alert" : (e.message === "auto" ? "Automatic check-in" : "Safe check-in");
+      return `<button type="button" class="case ${e.kind === "sos" && e.status !== "resolved" ? "sos" : ""} ${fresh.has(e.id) ? "fresh" : ""}" data-id="${esc(e.id)}" aria-current="${selected === e.id}">
+        <span class="top"><span class="who">${esc(p.full_name || "Unknown worker")}</span><span class="when">${ago(e.created_at)}</span></span>
+        <span class="row" style="gap:6px"><span class="tag ${e.kind}">${KIND[e.kind]}</span>${isCase(e) ? `<span class="tag ${e.status}">${STATUS[e.status]}</span>` : ""}${e.channel === "sms" ? `<span class="tag help">via SMS</span>` : ""}${e.example ? `<span class="tag example">Example</span>` : ""}</span>
+        <span class="what">${esc(what)}</span>
+        <span class="where">${esc([p.city, p.country].filter(Boolean).join(", "))}${e.lat == null ? " · no GPS" : ""}</span>
+      </button>`;
+    }).join("");
+    const cw = $("#clearW"); if (cw) cw.onclick = () => { workerFilter = null; renderAll(); };
+  }
+  function renderMap() {
+    if (!window.L) { $("#map").innerHTML = `<div class="empty">Map could not load. Use the map links on each case.</div>`; return; }
+    if (!map) {
+      map = L.map("map", { worldCopyJump: true }).setView([24, 50], 4);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
+      layer = L.layerGroup().addTo(map);
+    }
+    layer.clearLayers();
+    const css = getComputedStyle(document.documentElement);
+    const red = css.getPropertyValue("--sos").trim(), navy = css.getPropertyValue("--brand").trim(), warn = css.getPropertyValue("--warn").trim();
+    const pts = [];
+    for (const w of workers) {
+      const l = w.lastLoc; if (!l) continue;
+      const openSos = events.some(e => e.worker_id === w.id && e.kind === "sos" && e.status !== "resolved");
+      const color = openSos ? red : isLate(w) ? warn : navy;
+      const m = L.circleMarker([l.lat, l.lng], { radius: openSos ? 11 : 8, color: "#fff", weight: 2, fillColor: color, fillOpacity: 1 }).addTo(layer);
+      m.bindTooltip(`${esc(w.profile.full_name || "Worker")} · ${ago(w.last)}`);
+      m.on("click", () => { const c = events.find(e => e.worker_id === w.id && isCase(e) && e.status !== "resolved") || events.find(e => e.worker_id === w.id && e.kind !== "register"); if (c) select(c.id); });
+      pts.push([l.lat, l.lng]);
+    }
+    const cur = events.find(e => e.id === selected);
+    if (cur && cur.lat != null) {
+      L.circle([cur.lat, cur.lng], { radius: Math.max(cur.accuracy || 20, 20), color: navy, weight: 1, fillOpacity: .12 }).addTo(layer);
+      map.setView([cur.lat, cur.lng], 15);
+    } else if (pts.length && !renderMap.fitted) { map.fitBounds(pts, { padding: [30, 30], maxZoom: 6 }); renderMap.fitted = true; }
+    setTimeout(() => map.invalidateSize(), 50);
+  }
+  function renderDetail() {
+    const el = $("#detail"), e = events.find(x => x.id === selected);
+    if (!e) { el.innerHTML = `<p class="muted">Select a case to see the worker's details and location.</p>`; return; }
+    const p = e.worker || {};
+    const trail = events.filter(x => x.worker_id === e.worker_id && x.lat != null).slice(0, 8);
+    const title = e.kind === "help" ? (CATS[e.category] || "Help request") : e.kind === "sos" ? "SOS emergency alert" : "Check-in";
+    const kv = rows => rows.filter(r => r[1]).map(r => `<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join("");
+    el.innerHTML = `
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div style="display:grid;gap:4px;min-width:0">
+          <span class="row" style="gap:6px"><span class="tag ${e.kind}">${KIND[e.kind]}</span>${e.example ? `<span class="tag example">Example</span>` : ""}<span class="small muted mono">Ref ${ref(e.id)}</span></span>
+          <h3>${esc(title)}</h3>
+          <span class="small muted">Sent ${fmt(e.created_at)} (${ago(e.created_at)})${e.received_at && Math.abs(new Date(e.received_at) - new Date(e.created_at)) > 120000 ? ` · reached server ${fmt(e.received_at)}, sent while offline` : ""} · ${e.channel === "sms" ? "logged from SMS/phone" : "from app"}</span>
+        </div>
+        ${isCase(e) ? `<label style="min-width:160px">Status<select id="d_status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${e.status === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>` : ""}
+      </div>
+      ${e.message && e.message !== "auto" ? `<p class="note">${esc(e.message)}</p>` : ""}
+      <div class="two">
+        <div style="display:grid;gap:8px;min-width:0">
+          <span class="section-h">Location</span>
+          ${e.lat != null ? `<p class="mono" style="font-size:1.05rem">${e.lat.toFixed(5)}, ${e.lng.toFixed(5)}</p>
+            <p class="small muted">±${esc(e.accuracy ?? "?")} m · GPS taken ${fmt(e.loc_time || e.created_at)}</p>
+            ${e.place ? `<p class="small">${esc(e.place)}</p>` : ""}
+            <div class="row"><a class="btn" href="${gmaps(e.lat, e.lng)}" target="_blank" rel="noopener">Google Maps</a><a class="btn" href="${osm(e.lat, e.lng)}" target="_blank" rel="noopener">OpenStreetMap</a><button class="btn" id="copyCoords" type="button">Copy</button></div>`
+            : `<p class="note warn">No GPS position in this message. Use the home address below and call the worker.</p>`}
+          <span class="section-h" style="margin-top:6px">Home address given</span>
+          <p class="small">${esc(p.address || "—")}</p>
+        </div>
+        <div style="display:grid;gap:8px;min-width:0">
+          <span class="section-h">Worker</span>
+          <dl class="kv">${kv([["Name", p.full_name], ["Phone abroad", p.phone], ["Phone in TZ", p.phone_tz], ["Passport", p.passport_no], ["Country", p.country], ["City", p.city], ["Work", p.job], ["Employer", p.employer], ["Employer phone", p.employer_phone], ["Emergency", [p.emergency_name, p.emergency_phone].filter(Boolean).join(" · ")]])}</dl>
+          <button class="btn" id="onlyWorker" type="button">All messages from this worker</button>
+        </div>
+      </div>
+      ${trail.length > 1 ? `<div style="display:grid;gap:6px"><span class="section-h">Recent positions</span><ul class="trail">${trail.map(x => `<li><span>${KIND[x.kind]} · ${fmt(x.created_at)}</span><a class="mono" href="${gmaps(x.lat, x.lng)}" target="_blank" rel="noopener">${x.lat.toFixed(4)}, ${x.lng.toFixed(4)}</a></li>`).join("")}</ul></div>` : ""}
+      ${isCase(e) ? `<div style="display:grid;gap:8px"><span class="section-h">Messages with the worker (shown in their THC app)</span>
+        <div class="thread">${replies.filter(r => r.event_id === e.id).map(r => `<div class="bub ${r.sender}">${esc(r.body)}<small>${r.sender === "staff" ? esc(r.staff_name || "Centre") : "Worker"} · ${fmt(r.created_at)}</small></div>`).join("") || `<p class="small muted">No messages yet.</p>`}</div>
+        <div class="row" style="flex-wrap:nowrap"><input id="d_msg" placeholder="Write to the worker"><button class="btn primary" id="d_send" type="button">Send</button></div></div>` : ""}
+      ${isCase(e) ? `<label>Staff notes<textarea id="d_note" rows="3" placeholder="Who was contacted, what was agreed, next step">${esc(e.staff_note || "")}</textarea></label>
+      <div class="row"><button class="btn primary" id="d_save" type="button">Save notes</button></div>` : ""}`;
+    const st = $("#d_status"); if (st) st.onchange = () => save({ status: st.value }, "Status updated");
+    const ds = $("#d_send"); if (ds) ds.onclick = async () => {
+      const body = $("#d_msg").value.trim(); if (!body) return;
+      try { const row = await API.staffReply({ worker_id: e.worker_id, event_id: e.id, body, staff_name: (API.ls.get("thc_staff_settings", {}).name) || "Resource Centre" }); replies.push(row);
+        if (e.status === "new") await save({ status: "in_progress" }, "Message sent"); else { renderDetail(); toast("Message sent"); } }
+      catch (err) { toast("Message not sent"); }
+    };
+    const sv = $("#d_save"); if (sv) sv.onclick = () => save({ staff_note: $("#d_note").value.trim() || null }, "Notes saved");
+    const cc = $("#copyCoords"); if (cc) cc.onclick = () => navigator.clipboard.writeText(`${e.lat}, ${e.lng}`).then(() => toast("Coordinates copied")).catch(() => toast(`${e.lat}, ${e.lng}`));
+    $("#onlyWorker").onclick = () => { workerFilter = e.worker_id; $("#filter").value = "all"; renderAll(); };
+  }
+  function renderWorkers() {
+    const tb = $("#wbody");
+    if (!workers.length) { tb.innerHTML = `<tr><td colspan="8" class="empty">No workers have registered yet.</td></tr>`; return; }
+    tb.innerHTML = workers.map(w => { const p = w.profile; return `<tr data-w="${esc(w.id)}">
+      <td><b>${esc(p.full_name || "—")}</b>${w.example ? ` <span class="tag example">Example</span>` : ""}</td><td>${esc(p.country)}</td><td>${esc(p.city)}</td><td class="mono">${esc(p.phone)}</td><td>${esc(p.employer)}</td>
+      <td class="${isLate(w) ? "late" : ""}">${ago(w.last)}</td>
+      <td>${w.lastLoc ? `<a class="mono" href="${gmaps(w.lastLoc.lat, w.lastLoc.lng)}" target="_blank" rel="noopener">${w.lastLoc.lat.toFixed(4)}, ${w.lastLoc.lng.toFixed(4)}</a>` : "—"}</td>
+      <td>${w.open || ""}</td></tr>`; }).join("");
+  }
+  function renderAll() { deriveWorkers(); renderStats(); renderList(); renderDetail(); renderWorkers(); if (!$("#casesPane").hidden) renderMap(); }
+
+  async function save(patch, msg) {
+    try { await API.updateEvent(selected, patch); Object.assign(events.find(x => x.id === selected), patch); renderAll(); toast(msg); }
+    catch (err) { toast("Could not save: " + (err.message || "try again")); }
+  }
+  function select(id) { selected = id; fresh.clear(); renderList(); renderDetail(); const d = $("#detail"); d.classList.remove("swap"); void d.offsetWidth; d.classList.add("swap"); renderMap(); }
+
+  async function load() {
+    try { events = await API.listEvents(); replies = await API.listReplies(); }
+    catch (err) { toast("Could not load cases: " + (err.message || "check connection")); return; }
+    if (seen) { fresh = new Set(events.filter(e => !seen.has(e.id)).map(e => e.id)); if ([...fresh].some(id => (events.find(e => e.id === id) || {}).kind === "sos")) { const f = events.find(e => fresh.has(e.id) && e.kind === "sos"); selected = f.id; toast("New SOS from " + ((f.worker || {}).full_name || "a worker")); } }
+    seen = new Set(events.map(e => e.id));
+    if (selected && !events.some(e => e.id === selected)) selected = null;
+    if (!selected) { const first = visibleCases()[0]; if (first) selected = first.id; }
+    renderAll();
+  }
+
+  /* ---------- events ---------- */
+  $("#list").addEventListener("click", ev => { const b = ev.target.closest(".case"); if (b) select(b.dataset.id); });
+  $("#filter").addEventListener("change", () => { renderList(); });
+  $("#search").addEventListener("input", () => renderList());
+  function tab(which) {
+    $("#tab_cases").setAttribute("aria-selected", String(which === "cases")); $("#tab_workers").setAttribute("aria-selected", String(which === "workers"));
+    $("#casesPane").hidden = which !== "cases"; $("#workersPane").hidden = which !== "workers";
+    if (which === "cases") renderMap();
+  }
+  $("#tab_cases").onclick = () => tab("cases"); $("#tab_workers").onclick = () => tab("workers");
+  $("#st_sos").onclick = () => { $("#filter").value = "sos"; workerFilter = null; tab("cases"); renderList(); };
+  $("#st_help").onclick = () => { $("#filter").value = "help"; workerFilter = null; tab("cases"); renderList(); };
+  $("#st_late").onclick = $("#st_workers").onclick = () => tab("workers");
+  $("#wbody").addEventListener("click", ev => {
+    const tr = ev.target.closest("tr[data-w]"); if (!tr || ev.target.closest("a")) return;
+    workerFilter = tr.dataset.w; $("#filter").value = "all"; tab("cases");
+    const first = visibleCases()[0]; if (first) select(first.id); else renderAll();
+  });
+
+  // log SMS / phone case
+  $("#lf_cat").innerHTML += Object.entries(CATS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  $("#logBtn").onclick = () => { $("#logForm").reset(); $("#lfErr").hidden = true; $("#logDlg").showModal(); };
+  $("#lfCancel").onclick = () => $("#logDlg").close();
+  $("#lf_raw").addEventListener("input", ev => {
+    const s = ev.target.value;
+    const m = s.match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/);
+    if (m) { $("#lf_lat").value = m[1]; $("#lf_lng").value = m[2]; }
+    const parts = s.split("|").map(x => x.trim());
+    if (/(THC|TUCTA) SOS/i.test(parts[0] || "")) {
+      $("#lf_kind").value = "sos";
+      if (parts[1] && !$("#lf_name").value) $("#lf_name").value = parts[1];
+      if (parts[2] && !$("#lf_phone").value) $("#lf_phone").value = parts[2];
+      const loc = parts.find(x => /,/.test(x) && !/GPS|Home|http/.test(x) && !/\d{2}\.\d/.test(x));
+      if (loc && !$("#lf_city").value) { const [city, country] = loc.split(",").map(x => x.trim()); $("#lf_city").value = city || ""; $("#lf_country").value = country || ""; }
+    }
+  });
+  $("#lfSave").onclick = async () => {
+    const name = $("#lf_name").value.trim(); const lat = parseFloat($("#lf_lat").value), lng = parseFloat($("#lf_lng").value);
+    if (!name) { $("#lfErr").hidden = false; $("#lfErr").textContent = "Enter the worker's name."; return; }
+    const hasGps = isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+    const now = new Date().toISOString();
+    const ev = { id: API.uuid(), created_at: now, worker_id: API.uuid(), kind: $("#lf_kind").value, category: $("#lf_cat").value || null,
+      message: [$("#lf_msg").value.trim(), $("#lf_raw").value.trim() ? "SMS: " + $("#lf_raw").value.trim() : ""].filter(Boolean).join("\n\n") || null,
+      lat: hasGps ? lat : null, lng: hasGps ? lng : null, accuracy: null, loc_time: hasGps ? now : null, place: null,
+      worker: { full_name: name, phone: $("#lf_phone").value.trim(), country: $("#lf_country").value.trim(), city: $("#lf_city").value.trim() }, channel: "sms" };
+    try { await API.staffInsert(ev); $("#logDlg").close(); selected = ev.id; await load(); toast("Case logged"); }
+    catch (err) { $("#lfErr").hidden = false; $("#lfErr").textContent = "Could not save: " + (err.message || "try again"); }
+  };
+
+  $("#resetDemo").onclick = () => { API.clearDemo(); { const d = window.thcDemo(); API.seedDemo(d.events); API.seedDemoReplies(d.replies); } selected = null; renderMap.fitted = false; load(); toast("Demo data reset"); };
+  $("#signOut").onclick = async () => { await API.auth.signOut(); location.reload(); };
+  $("#loginForm").addEventListener("submit", async ev => {
+    ev.preventDefault(); $("#lgErr").hidden = true;
+    try { await API.auth.signIn($("#lg_email").value.trim(), $("#lg_pass").value); start(); }
+    catch (err) { $("#lgErr").hidden = false; $("#lgErr").textContent = "Sign-in failed: " + (err.message || "check your email and password"); }
+  });
+
+  /* ---------- start ---------- */
+  async function start() {
+    $("#orgName").textContent = C.ORG_NAME;
+    $("#mode").textContent = API.LIVE ? "Live" : "Demo";
+    let session = null;
+    try { session = await API.auth.session(); } catch (e) { toast("Could not reach the online database"); }
+    if (!session) { $("#loginView").hidden = false; $("#deskView").hidden = true; return; }
+    $("#loginView").hidden = true; $("#deskView").hidden = false;
+    $("#signOut").hidden = !API.LIVE; $("#demoBanner").hidden = API.LIVE;
+    if (!API.LIVE) { const d = window.thcDemo(); if (API.seedDemo(d.events)) API.seedDemoReplies(d.replies); }
+    await load();
+    API.subscribe(() => load());
+    setInterval(() => { renderStats(); renderList(); }, 60000);
+  }
+  start();
+})();
+</script>

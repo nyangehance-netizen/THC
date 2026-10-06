@@ -1,0 +1,186 @@
+name: Build mobile apps
+
+# Builds 4 apps on every push to main (and on demand from the Actions tab):
+#   THC          (workers)      -> Android APK + AAB, iOS
+#   THC Centre   (call centre)  -> Android APK + AAB, iOS
+# Download them from the run page under "Artifacts".
+# Pushing a tag like v1.0.0 also publishes a GitHub Release with the Android APKs.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android · ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [worker, centre]
+    env:
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+
+      - name: Build web app
+        run: python3 web/build.py
+
+      - name: Create Android project
+        working-directory: mobile
+        run: |
+          npm install --no-audit --no-fund
+          node scripts/prepare.mjs ${{ matrix.app }}
+          npx cap add android
+          node scripts/native-setup.mjs android
+          npx capacitor-assets generate --android --iconBackgroundColor '#0071E3' --splashBackgroundColor '#F5F5F7'
+          npx cap sync android
+
+      - name: Set version
+        working-directory: mobile/android
+        run: |
+          CODE=${{ github.run_number }}
+          NAME=1.0.${{ github.run_number }}
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then NAME="${GITHUB_REF#refs/tags/v}"; fi
+          sed -i "s/versionCode [0-9]*/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"$NAME\"/" app/build.gradle
+
+      - name: Build debug APK (install directly on a phone)
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          mkdir -p ../../out
+          cp app/build/outputs/apk/debug/app-debug.apk ../../out/THC-${{ matrix.app }}-debug.apk
+
+      - name: Build signed release APK + AAB (Google Play)
+        if: env.KEYSTORE_B64 != ''
+        working-directory: mobile/android
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > release.keystore
+          ./gradlew assembleRelease bundleRelease --no-daemon
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          $BT/zipalign -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          $BT/apksigner sign --ks release.keystore --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS \
+            --out ../../out/THC-${{ matrix.app }}-release.apk aligned.apk
+          cp app/build/outputs/bundle/release/app-release.aab ../../out/THC-${{ matrix.app }}-release.aab
+          jarsigner -keystore release.keystore -storepass "$KS_PASS" -keypass "$KEY_PASS" ../../out/THC-${{ matrix.app }}-release.aab "$KEY_ALIAS"
+          rm release.keystore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.app }}
+          path: out/*
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.apk
+
+  ios:
+    name: iOS · ${{ matrix.app }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [worker, centre]
+    env:
+      CERT_B64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build web app
+        run: python3 web/build.py
+
+      - name: Create iOS project
+        working-directory: mobile
+        run: |
+          npm install --no-audit --no-fund
+          node scripts/prepare.mjs ${{ matrix.app }}
+          npx cap add ios
+          node scripts/native-setup.mjs ios
+          npx capacitor-assets generate --ios --iconBackgroundColor '#0071E3' --splashBackgroundColor '#F5F5F7'
+          npx cap sync ios
+
+      - name: Build for iPhone Simulator (no Apple account needed)
+        working-directory: mobile/ios/App
+        run: |
+          if [ -d App.xcworkspace ]; then SRC="-workspace App.xcworkspace"; else SRC="-project App.xcodeproj"; fi
+          xcodebuild $SRC -scheme App -configuration Release -sdk iphonesimulator -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build | tail -20
+          mkdir -p ../../../out
+          (cd build/Build/Products/Release-iphonesimulator && zip -qry ../../../../../../../out/THC-${{ matrix.app }}-simulator.zip App.app)
+
+      - name: Build unsigned iPhone app (to sign later)
+        working-directory: mobile/ios/App
+        run: |
+          if [ -d App.xcworkspace ]; then SRC="-workspace App.xcworkspace"; else SRC="-project App.xcodeproj"; fi
+          xcodebuild $SRC -scheme App -configuration Release -sdk iphoneos -archivePath build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive | tail -20
+          mkdir -p Payload && cp -R build/App.xcarchive/Products/Applications/App.app Payload/
+          zip -qry ../../../out/THC-${{ matrix.app }}-unsigned.ipa Payload
+
+      - name: Signed build for TestFlight / App Store
+        if: env.CERT_B64 != ''
+        working-directory: mobile/ios/App
+        env:
+          P12_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILE_B64: ${{ matrix.app == 'worker' && secrets.IOS_PROFILE_WORKER_BASE64 || secrets.IOS_PROFILE_CENTRE_BASE64 }}
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          KC=$RUNNER_TEMP/build.keychain-db; KCP=$(uuidgen)
+          echo "$CERT_B64" | base64 -d > $RUNNER_TEMP/cert.p12
+          echo "$PROFILE_B64" | base64 -d > $RUNNER_TEMP/app.mobileprovision
+          security create-keychain -p "$KCP" $KC && security set-keychain-settings -lut 21600 $KC && security unlock-keychain -p "$KCP" $KC
+          security import $RUNNER_TEMP/cert.p12 -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KC
+          security set-key-partition-list -S apple-tool:,apple: -k "$KCP" $KC >/dev/null
+          security list-keychain -d user -s $KC
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< "$(security cms -D -i $RUNNER_TEMP/app.mobileprovision)")
+          NAME=$(/usr/libexec/PlistBuddy -c "Print Name" /dev/stdin <<< "$(security cms -D -i $RUNNER_TEMP/app.mobileprovision)")
+          cp $RUNNER_TEMP/app.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
+          BUNDLE=$(node -p "require('../../capacitor.config.json').appId")
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict><key>$BUNDLE</key><string>$NAME</string></dict>
+          </dict></plist>
+          EOF
+          if [ -d App.xcworkspace ]; then SRC="-workspace App.xcworkspace"; else SRC="-project App.xcodeproj"; fi
+          xcodebuild $SRC -scheme App -configuration Release -sdk iphoneos -archivePath build/Signed.xcarchive \
+            DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Distribution" PROVISIONING_PROFILE_SPECIFIER="$NAME" archive | tail -20
+          xcodebuild -exportArchive -archivePath build/Signed.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/export
+          cp build/export/*.ipa ../../../out/THC-${{ matrix.app }}-appstore.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ matrix.app }}
+          path: out/*
