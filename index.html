@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light only">
+<meta name="theme-color" content="#F5F5F7">
+<title>THC</title>
+<link rel="icon" href="web/site/icon-192.png">
+<style>
+  :root { --bg: #F5F5F7; --surface: #FFFFFF; --ink: #1D1D1F; --muted: #6E6E73; --blue: #0071E3; --link: #0066CC; color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+         letter-spacing: -.022em; -webkit-font-smoothing: antialiased; }
+  main { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 72px 56px; display: grid; gap: 40px; text-align: center; }
+  h1 { font-size: clamp(3rem, 9vw, 5rem); font-weight: 700; letter-spacing: -.04em; margin: 0; line-height: 1; }
+  .lead { font-size: clamp(1.15rem, 2.6vw, 1.6rem); font-weight: 600; margin: 12px auto 0; max-width: 30ch; text-wrap: balance; }
+  .sub { color: var(--muted); margin: 10px auto 0; max-width: 46ch; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; text-align: left; }
+  .tile { background: var(--surface); border-radius: 22px; padding: 28px; display: grid; gap: 10px; align-content: start; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+  .tile img { width: 64px; height: 64px; border-radius: 15px; }
+  .tile h2 { margin: 6px 0 0; font-size: 1.6rem; letter-spacing: -.03em; }
+  .tile p { margin: 0; color: var(--muted); line-height: 1.5; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .btn { background: var(--blue); color: #fff; border-radius: 980px; padding: 10px 20px; text-decoration: none; font-size: .95rem; }
+  .btn:hover { background: #0077ED; }
+  .more { color: var(--link); text-decoration: none; }
+  .more:hover { text-decoration: underline; }
+  footer { color: var(--muted); font-size: .8rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>THC</h1>
+    <p class="lead">Help for Tanzanian migrant workers, wherever they are.</p>
+    <p class="sub">SOS with exact GPS location, quick reports and messages, linked live to the Resource Centre.</p>
+  </header>
+  <section class="grid">
+    <article class="tile">
+      <img src="web/site/icon-512.png" alt="">
+      <h2>THC</h2>
+      <p>For workers abroad. Press SOS, report a problem in two taps, check in as safe, and send your location by SMS when there is no internet.</p>
+      <div class="row"><a class="btn" href="web/site/index.html">Open THC</a></div>
+    </article>
+    <article class="tile">
+      <img src="web/site/icon-centre-512.png" alt="">
+      <h2>THC Centre</h2>
+      <p>For Resource Centre staff. Live SOS alarms, worker locations, one-tap call or SMS, case status and messages to workers.</p>
+      <div class="row"><a class="btn" href="web/site/centre.html">Open THC Centre</a><a class="more" href="web/site/dashboard.html">Desktop Case Desk ›</a></div>
+    </article>
+  </section>
+  <footer>TUCTA Migrant Workers Resource Centre</footer>
+</main>
+</body>
+</html>

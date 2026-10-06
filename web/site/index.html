@@ -1,0 +1,849 @@
+<!doctype html><html lang="sw"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>THC</title>
+<meta name="theme-color" content="#F5F5F7">
+<meta name="color-scheme" content="light only">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* App shell: header, scrolling views, bottom tab bar. SOS red is the only loud colour. */
+  :root { --ease: cubic-bezier(.2,.8,.2,1); --spring: cubic-bezier(.34,1.56,.64,1); --nav-h: 64px; }
+  html, body { height: 100%; }
+  body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+  .app { max-width: 560px; margin: 0 auto; min-height: 100%; position: relative; }
+  .hdr { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: var(--brand-bg); color: var(--on-brand);
+         padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .logo { font-family: var(--font-display); font-weight: 900; font-stretch: 125%; font-size: 1.5rem; letter-spacing: .08em; line-height: 1; }
+  .hdr .grow { flex: 1; }
+  .netdot { display: inline-flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.12); }
+  .netdot i { width: 8px; height: 8px; border-radius: 50%; background: #6EE7A6; box-shadow: 0 0 0 0 rgba(110,231,166,.7); animation: beat 2s infinite; }
+  .netdot.off i { background: #FF8A7A; animation: none; }
+  @keyframes beat { 0% { box-shadow: 0 0 0 0 rgba(110,231,166,.6); } 70% { box-shadow: 0 0 0 7px rgba(110,231,166,0); } 100% { box-shadow: 0 0 0 0 rgba(110,231,166,0); } }
+
+  .offbar { background: var(--warn); color: #fff; font-size: .85rem; font-weight: 600; padding: 8px 16px; display: flex; gap: 10px; align-items: center; justify-content: space-between;
+            animation: drop .35s var(--ease); }
+  .offbar button { background: #fff; color: var(--warn); border: 0; border-radius: 8px; padding: 5px 10px; font-weight: 800; cursor: pointer; }
+  @keyframes drop { from { transform: translateY(-100%); opacity: 0; } }
+
+  main.view { padding-inline: 16px; padding-block: 16px calc(var(--nav-h) + 32px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 18px; animation: viewIn .38s var(--ease); }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(10px); } }
+  .hello { display: grid; gap: 2px; }
+  .hello h1 { font-size: 1.6rem; font-weight: 900; font-stretch: 112%; }
+
+  /* SOS */
+  .sos-zone { display: grid; justify-items: center; gap: 12px; padding-block: 8px 4px; }
+  .sos { position: relative; width: 184px; height: 184px; border-radius: 50%; border: 0; cursor: pointer; color: #fff;
+         background: radial-gradient(circle at 50% 35%, var(--sos), var(--sos-deep)); box-shadow: 0 14px 34px -8px color-mix(in srgb, var(--sos) 60%, transparent);
+         display: grid; place-items: center; transition: transform .18s var(--ease); isolation: isolate; }
+  .sos::before, .sos::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--sos); z-index: -1; animation: ring 2.4s var(--ease) infinite; }
+  .sos::after { animation-delay: 1.2s; }
+  @keyframes ring { from { transform: scale(1); opacity: .7; } to { transform: scale(1.55); opacity: 0; } }
+  .sos:active { transform: scale(.94); }
+  .sos b { font-family: var(--font-display); font-weight: 900; font-stretch: 125%; font-size: 3rem; letter-spacing: .08em; line-height: 1; }
+  .sos small { display: block; font-size: .72rem; font-weight: 700; opacity: .9; margin-top: 4px; letter-spacing: .04em; }
+  .sos-cap { font-size: .85rem; color: var(--muted); text-align: center; max-width: 34ch; }
+
+  /* status strip */
+  .strip { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: stretch; }
+  .loc-chip { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: flex; gap: 10px; align-items: center; min-width: 0; text-align: left; cursor: pointer; }
+  .loc-chip svg { flex: none; color: var(--brand); }
+  .loc-chip .t { min-width: 0; display: grid; }
+  .loc-chip .t b { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .loc-chip .t span { font-size: .75rem; color: var(--muted); }
+  .safe-btn { border: 0; border-radius: 14px; background: var(--ok); color: #fff; font-weight: 800; padding: 0 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: transform .15s var(--ease); }
+  .safe-btn:active { transform: scale(.95); }
+
+  /* quick report tiles */
+  .sec-h { display: flex; justify-content: space-between; align-items: baseline; }
+  .sec-h h2 { font-size: 1.1rem; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 380px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 6px 10px; display: grid; justify-items: center; gap: 6px; cursor: pointer;
+          font-size: .74rem; font-weight: 700; line-height: 1.2; text-align: center; transition: transform .18s var(--spring), border-color .2s;
+          animation: pop .45s var(--spring) both; animation-delay: calc(var(--i) * 40ms); }
+  .tile:hover { border-color: var(--brand); }
+  .tile:active { transform: scale(.92); }
+  .tile .ic { width: 44px; height: 44px; border-radius: 14px; background: var(--surface-2); color: var(--brand); display: grid; place-items: center; }
+  @keyframes pop { from { opacity: 0; transform: scale(.85) translateY(8px); } }
+
+  /* activity */
+  .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .feed li { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center;
+             animation: pop .4s var(--ease) both; animation-delay: calc(var(--i) * 35ms); }
+  .feed .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--brand); grid-row: span 2; }
+  .feed .ic.sos { background: color-mix(in srgb, var(--sos) 14%, transparent); color: var(--sos); }
+  .feed .ic.checkin { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+  .feed b { font-size: .92rem; }
+  .feed .meta { font-size: .76rem; color: var(--muted); font-family: var(--font-mono); grid-column: 2; }
+  .badge { font-size: .7rem; font-weight: 800; border-radius: 999px; padding: 3px 9px; grid-row: span 2; white-space: nowrap; }
+  .badge.sent { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+  .badge.queued { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+  .empty-state { text-align: center; color: var(--muted); padding: 32px 16px; display: grid; justify-items: center; gap: 8px; }
+
+  /* SMS view */
+  .numrow { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; padding: 12px; border-radius: 12px; background: var(--surface-2); }
+  .numrow b { font-family: var(--font-mono); }
+  #smsText { font-family: var(--font-mono); font-size: .8rem; min-height: 130px; }
+
+  /* bottom nav */
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+         border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .nav-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); height: var(--nav-h); position: relative; }
+  .nav button { background: none; border: 0; display: grid; justify-items: center; align-content: center; gap: 3px; font-size: .7rem; font-weight: 700; color: var(--muted); cursor: pointer; position: relative; }
+  .nav button svg { transition: transform .25s var(--spring); }
+  .nav button[aria-current="page"] { color: var(--brand); }
+  .nav button[aria-current="page"] svg { transform: translateY(-2px) scale(1.12); }
+  .nav .ind { position: absolute; top: 0; height: 3px; width: 25%; background: var(--brand); border-radius: 0 0 3px 3px; transition: transform .35s var(--ease); }
+  .nav .count { position: absolute; top: 8px; left: calc(50% + 6px); background: var(--warn); color: #fff; font-size: .62rem; border-radius: 999px; padding: 1px 5px; }
+
+  /* bottom sheet */
+  .scrim { position: fixed; inset: 0; background: rgba(6,12,28,.5); z-index: 40; animation: fade .25s var(--ease); }
+  @keyframes fade { from { opacity: 0; } }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-width: 560px; margin: 0 auto; background: var(--surface); border-radius: 22px 22px 0 0;
+           padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; animation: up .38s var(--ease); max-height: 90%; overflow: auto; }
+  .sheet.closing { animation: down .25s var(--ease) forwards; } .scrim.closing { animation: fadeout .25s forwards; }
+  @keyframes up { from { transform: translateY(100%); } }
+  @keyframes down { to { transform: translateY(100%); } }
+  @keyframes fadeout { to { opacity: 0; } }
+  .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); justify-self: center; }
+  .sheet-h { display: flex; gap: 12px; align-items: center; }
+  .sheet-h .ic { width: 48px; height: 48px; border-radius: 14px; background: var(--surface-2); color: var(--brand); display: grid; place-items: center; flex: none; }
+  .sheet-h h2 { font-size: 1.25rem; }
+  .attach { display: flex; gap: 8px; align-items: center; font-size: .82rem; color: var(--muted); }
+  .attach svg { color: var(--ok); flex: none; }
+  .big { padding: 15px 16px; font-size: 1.02rem; border-radius: 14px; }
+
+  /* success */
+  .done { display: grid; justify-items: center; gap: 10px; text-align: center; padding-block: 18px 6px; }
+  .done svg circle { stroke-dasharray: 160; stroke-dashoffset: 160; animation: draw .55s var(--ease) forwards; }
+  .done svg path { stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw .35s .45s var(--ease) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .done h2 { font-size: 1.35rem; }
+
+  /* SOS countdown overlay */
+  .cd { position: fixed; inset: 0; z-index: 50; background: radial-gradient(circle at 50% 40%, var(--sos), var(--sos-deep) 70%); color: #fff;
+        display: grid; place-items: center; padding: 24px 16px; text-align: center; animation: fade .2s; }
+  .cd .in { display: grid; gap: 22px; justify-items: center; max-width: 380px; }
+  .ringwrap { position: relative; width: 190px; height: 190px; display: grid; place-items: center; }
+  .ringwrap svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ringwrap .prog { stroke-dasharray: 565; stroke-dashoffset: 0; animation: deplete 3s linear forwards; }
+  @keyframes deplete { to { stroke-dashoffset: 565; } }
+  .ringwrap .n { font-family: var(--font-display); font-size: 5.4rem; font-weight: 900; font-variant-numeric: tabular-nums; animation: tick 1s var(--ease) infinite; }
+  @keyframes tick { 0% { transform: scale(1.15); } 30% { transform: scale(1); } }
+  .cd .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+  .cd .btn { padding: 14px; border-radius: 14px; font-size: 1rem; }
+  .cd .ghost { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,.6); }
+  .cd .white { background: #fff; color: var(--sos-deep); border: 0; }
+
+  /* onboarding */
+  .onb { padding-inline: 16px; padding-block: 18px 40px; display: grid; gap: 18px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .steps i { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; position: relative; }
+  .steps i::after { content: ""; position: absolute; inset: 0; background: var(--brand); transform: scaleX(0); transform-origin: left; transition: transform .45s var(--ease); }
+  .steps i.on::after { transform: scaleX(1); }
+  .step { display: grid; gap: 14px; animation: slideIn .4s var(--ease); }
+  .step.back { animation: slideBack .4s var(--ease); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(28px); } }
+  @keyframes slideBack { from { opacity: 0; transform: translateX(-28px); } }
+  .step h1 { font-size: 1.55rem; font-weight: 900; font-stretch: 110%; }
+  .onb-nav { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+  .welcome { display: grid; gap: 6px; }
+  .welcome .logo { color: var(--brand); font-size: 2.6rem; }
+  .shake { animation: shake .4s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+  .centre-msg { background: var(--brand-bg); color: #fff; border-radius: 18px; padding: 14px 16px; display: grid; gap: 6px; text-align: left; border: 0; cursor: pointer; animation: pop .5s var(--spring); position: relative; }
+  .centre-msg .eyebrow { color: rgba(255,255,255,.75); display: flex; gap: 6px; align-items: center; }
+  .centre-msg .eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: #FFD166; animation: beat 1.6s infinite; }
+  .centre-msg p { font-size: 1rem; font-weight: 600; }
+  .centre-msg span.r { font-size: .8rem; font-weight: 800; text-decoration: underline; }
+  .feed li.tap { cursor: pointer; }
+  .badge.new { background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); }
+  .badge.in_progress { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+  .badge.resolved { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+  .feed .msgdot { grid-column: 2 / -1; font-size: .76rem; font-weight: 800; color: var(--brand); }
+  .thread { display: grid; gap: 8px; max-height: 46vh; overflow: auto; padding: 2px; }
+  .bub { max-width: 84%; padding: 9px 12px; border-radius: 16px; font-size: .92rem; animation: pop .35s var(--spring); overflow-wrap: anywhere; }
+  .bub small { display: block; font-size: .68rem; opacity: .75; margin-top: 3px; }
+  .bub.staff { background: var(--surface-2); justify-self: start; border-bottom-left-radius: 5px; }
+  .bub.worker { background: var(--brand-bg); color: #fff; justify-self: end; border-bottom-right-radius: 5px; }
+  .composer { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+  .composer textarea { min-height: 46px; }
+  .sendc { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--brand-bg); color: #fff; display: grid; place-items: center; cursor: pointer; }
+  .lang { display: inline-flex; border-radius: 999px; background: rgba(255,255,255,.12); padding: 2px; }
+  .lang button { border: 0; background: transparent; color: #fff; font-weight: 800; font-size: .75rem; padding: 4px 9px; border-radius: 999px; cursor: pointer; transition: background .2s; }
+  .lang button[aria-pressed="true"] { background: #fff; color: var(--brand-bg); }
+  .toast { animation: toastIn .3s var(--spring); }
+  @keyframes toastIn { from { transform: translate(-50%, 20px); opacity: 0; } }
+  .toast { bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom, 0px)); }
+  /* ---- Apple-style finish ---- */
+  .hdr { background: var(--navbg); color: var(--ink); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
+  .logo { font-family: var(--font-display); font-weight: 700; font-stretch: normal; letter-spacing: -.03em; font-size: 1.4rem; color: var(--ink); }
+  .nav { background: var(--navbg); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-top: .5px solid var(--line); }
+  .nav .ind { display: none; }
+  .nav button { font-weight: 500; font-size: .68rem; letter-spacing: 0; }
+  .nav button[aria-current="page"] { color: var(--brand-bg); }
+  .nav .count { background: var(--sos); font-weight: 600; }
+  .netdot { background: var(--surface-2); color: var(--ink); font-weight: 500; }
+  .netdot i { background: var(--ok-fill); }
+  .lang { background: var(--surface-2); padding: 2px; }
+  .lang button { color: var(--ink); font-weight: 600; }
+  .lang button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .offbar { background: var(--surface); color: var(--warn); border-bottom: .5px solid var(--line); }
+  .offbar button { background: var(--brand-bg); color: #fff; border-radius: 980px; padding: 6px 14px; font-weight: 500; }
+  main.view { gap: 22px; }
+  .hello { gap: 0; }
+  .hello h1 { font-size: 2.15rem; font-weight: 700; font-stretch: normal; letter-spacing: -.03em; }
+  .hello .eyebrow { font-size: .95rem; }
+  .sos { width: 196px; height: 196px; background: linear-gradient(180deg, #FF6259 0%, var(--sos) 45%, var(--sos-deep) 100%); box-shadow: 0 20px 40px -12px color-mix(in srgb, var(--sos) 55%, transparent); }
+  .sos::before, .sos::after { border-width: 1.5px; }
+  .sos b { font-family: var(--font-display); font-weight: 700; font-stretch: normal; letter-spacing: -.01em; font-size: 3.2rem; }
+  .sos small { font-weight: 500; letter-spacing: .02em; font-size: .72rem; }
+  .sos-cap { font-size: .92rem; }
+  .loc-chip { border: 0; border-radius: 18px; box-shadow: var(--shadow); padding: 12px 14px; }
+  .loc-chip svg { color: var(--brand-bg); }
+  .loc-chip .t b { font-weight: 600; }
+  .safe-btn { border-radius: 980px; background: var(--ok-fill); color: #fff; font-weight: 600; padding: 0 20px; }
+  .sec-h h2 { font-size: 1.45rem; font-weight: 700; }
+  .tiles { gap: 12px; }
+  .tile { border: 0; border-radius: 20px; box-shadow: var(--shadow); font-weight: 500; font-size: .74rem; padding: 14px 6px 12px; letter-spacing: -.01em; }
+  .tile .ic { border-radius: 50%; background: color-mix(in srgb, var(--brand-bg) 10%, transparent); color: var(--brand-bg); }
+  .feed li { border: 0; border-radius: 18px; box-shadow: var(--shadow); }
+  .feed .ic { border-radius: 50%; color: var(--brand-bg); background: color-mix(in srgb, var(--brand-bg) 10%, transparent); }
+  .feed b { font-weight: 600; }
+  .feed .meta { font-size: .74rem; }
+  .badge { font-weight: 600; }
+  .badge.new { color: var(--brand); background: color-mix(in srgb, var(--brand-bg) 12%, transparent); }
+  .numrow { border-radius: 14px; background: var(--bg); }
+  .sheet { border-radius: 14px 14px 0 0; background: var(--surface); }
+  .sheet-h .ic { border-radius: 50%; color: var(--brand-bg); background: color-mix(in srgb, var(--brand-bg) 10%, transparent); }
+  .sheet-h h2 { font-size: 1.4rem; font-weight: 700; }
+  .big { padding: 14px 22px; font-size: 1.05rem; border-radius: 980px; }
+  .done h2 { font-size: 1.6rem; font-weight: 700; }
+  .centre-msg { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); border-radius: 20px; }
+  .centre-msg .eyebrow { color: var(--muted); }
+  .centre-msg .eyebrow i { background: var(--brand-bg); }
+  .centre-msg p { font-weight: 500; font-size: 1.05rem; }
+  .centre-msg span.r { color: var(--brand); text-decoration: none; font-weight: 400; font-size: .95rem; }
+  .bub { border-radius: 20px; }
+  .bub.staff { background: var(--surface-2); color: var(--ink); border-bottom-left-radius: 6px; }
+  .bub.worker { background: var(--brand-bg); color: #fff; border-bottom-right-radius: 6px; }
+  .sendc { background: var(--brand-bg); }
+  .onb { gap: 22px; padding-top: 26px; }
+  .step h1, .welcome h1 { font-size: 2rem; font-weight: 700; font-stretch: normal; letter-spacing: -.03em; }
+  .welcome .logo { color: var(--ink); font-size: 3rem; }
+  .steps i { height: 4px; background: var(--surface-2); }
+  .steps i::after { background: var(--brand-bg); }
+  .cd { background: radial-gradient(circle at 50% 40%, #FF5147, var(--sos-deep) 75%); }
+  .cd .btn { border-radius: 980px; font-weight: 600; }
+  .ringwrap .n { font-family: var(--font-display); font-weight: 700; }
+</style>
+
+<div class="app">
+  <header class="hdr">
+    <span class="logo">THC</span>
+    <span class="grow"></span>
+    <span class="netdot" id="net"><i></i><span></span></span>
+    <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="sw">SW</button><button type="button" data-lang="en">EN</button></div>
+  </header>
+  <div class="offbar" id="offbar" hidden><span data-i18n="offBanner"></span><button type="button" data-go="sms" data-i18n="smsNav"></button></div>
+
+  <!-- ONBOARDING -->
+  <section id="onb" class="onb" hidden>
+    <div class="steps" aria-hidden="true"><i></i><i></i><i></i></div>
+    <form id="regForm" novalidate>
+      <div class="step" data-step="1">
+        <div class="welcome"><span class="logo">THC</span><h1 data-i18n="s1Title"></h1><p class="muted" data-i18n="regIntro"></p></div>
+        <label><span data-i18n="fullName"></span><input id="f_name" name="full_name" autocomplete="name" required></label>
+        <label><span data-i18n="phoneAbroad"></span><input id="f_phone" name="phone" type="tel" inputmode="tel" placeholder="+968 ..." required></label>
+        <label><span data-i18n="phoneHome"></span><input id="f_phone_tz" name="phone_tz" type="tel" inputmode="tel" placeholder="+255 ..."></label>
+        <label><span data-i18n="passport"></span><input id="f_passport" name="passport_no" autocapitalize="characters"></label>
+      </div>
+      <div class="step" data-step="2" hidden>
+        <h1 data-i18n="s2Title"></h1>
+        <button type="button" class="btn primary big" id="detectBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/></svg><span data-i18n="detect"></span></button>
+        <p id="detectMsg" class="small muted" hidden></p>
+        <div class="grid2">
+          <label><span data-i18n="country"></span><select id="f_country" name="country" required></select></label>
+          <label><span data-i18n="city"></span><input id="f_city" name="city" required></label>
+        </div>
+        <label id="otherCountryWrap" hidden><span data-i18n="countryOther"></span><input id="f_country_other" name="country_other"></label>
+        <label><span data-i18n="address"></span><textarea id="f_address" name="address" rows="2" required></textarea></label>
+        <div class="grid2">
+          <label><span data-i18n="employer"></span><input id="f_employer" name="employer"></label>
+          <label><span data-i18n="employerPhone"></span><input id="f_employer_phone" name="employer_phone" type="tel"></label>
+        </div>
+        <label><span data-i18n="job"></span><select id="f_job" name="job"></select></label>
+      </div>
+      <div class="step" data-step="3" hidden>
+        <h1 data-i18n="s3Title"></h1>
+        <label><span data-i18n="emName"></span><input id="f_em_name" name="emergency_name"></label>
+        <label><span data-i18n="emPhone"></span><input id="f_em_phone" name="emergency_phone" type="tel"></label>
+        <label class="check card" style="padding:14px"><input type="checkbox" id="f_consent" name="consent"><span data-i18n="consent"></span></label>
+      </div>
+      <p id="regErr" class="note bad" hidden style="margin-top:14px"></p>
+      <div class="onb-nav" style="margin-top:18px">
+        <button type="button" class="btn big" id="backBtn" data-i18n="back" hidden></button>
+        <button type="submit" class="btn primary big" id="nextBtn" style="grid-column:2"></button>
+      </div>
+    </form>
+  </section>
+
+  <!-- HOME -->
+  <main class="view" id="v-home" hidden>
+    <p id="demoNote" class="note small" hidden></p>
+    <div class="hello"><span class="eyebrow" id="helloSub"></span><h1 id="helloName"></h1></div>
+    <div id="centreSlot"></div>
+    <div class="sos-zone">
+      <button class="sos" id="sosBtn" type="button" aria-describedby="sosCap"><span><b>SOS</b><small data-i18n="sosPress"></small></span></button>
+      <p class="sos-cap" id="sosCap" data-i18n="sosHint"></p>
+    </div>
+    <div class="strip">
+      <button class="loc-chip" type="button" id="locChip">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+        <span class="t"><b id="locPlace"></b><span id="locAge"></span></span>
+      </button>
+      <button class="safe-btn" type="button" id="safeBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg><span data-i18n="safe"></span></button>
+    </div>
+    <p id="locErr" class="note bad" hidden></p>
+    <div class="sec-h"><h2 data-i18n="quickTitle"></h2><span class="small muted" data-i18n="quickHint"></span></div>
+    <div class="tiles" id="tiles"></div>
+  </main>
+
+  <!-- ACTIVITY -->
+  <main class="view" id="v-activity" hidden>
+    <div class="sec-h"><h2 data-i18n="histTitle"></h2></div>
+    <ul class="feed" id="feed"></ul>
+  </main>
+
+  <!-- SMS -->
+  <main class="view" id="v-sms" hidden>
+    <div class="card">
+      <h2 data-i18n="smsTitle"></h2>
+      <p class="small" data-i18n="smsIntro"></p>
+      <div class="numrow"><span class="small muted" data-i18n="smsLabel"></span><b id="smsNum"></b></div>
+      <div class="numrow"><span class="small muted" data-i18n="callLabel"></span><b id="callNum"></b></div>
+      <a class="btn danger big" id="smsLink" href="#" data-i18n="smsBtn"></a>
+      <textarea id="smsText" readonly aria-label="SMS"></textarea>
+      <div class="row"><button class="btn" type="button" id="copyBtn" data-i18n="copy"></button><a class="btn" id="waLink" href="#" target="_blank" rel="noopener" hidden>WhatsApp</a></div>
+      <p class="small muted" data-i18n="smsNote"></p>
+    </div>
+  </main>
+
+  <!-- ME -->
+  <main class="view" id="v-me" hidden>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 data-i18n="profileTitle"></h2><button class="btn" id="editBtn" type="button" data-i18n="edit"></button></div>
+      <dl class="kv" id="profile"></dl>
+    </div>
+    <div class="card">
+      <h2 data-i18n="locTitle"></h2>
+      <p id="meCoords" class="mono"></p>
+      <p id="meAcc" class="small muted"></p>
+      <div class="row"><button class="btn primary" type="button" id="refreshLoc" data-i18n="refresh"></button><a class="btn" id="mapLink" href="#" target="_blank" rel="noopener" hidden data-i18n="openMap"></a></div>
+    </div>
+    <p class="small muted" style="text-align:center"><span id="orgName"></span> · <a href="centre.html" data-i18n="dashboardLink"></a></p>
+  </main>
+</div>
+
+<nav class="nav" id="nav" hidden aria-label="Main">
+  <div class="nav-in">
+    <span class="ind" id="ind"></span>
+    <button type="button" data-go="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 4v5c0 5-3.8 8.6-9 9.5C6.8 20.6 3 17 3 12V7z"/></svg><span data-i18n="nHome"></span></button>
+    <button type="button" data-go="activity"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span data-i18n="nActivity"></span><span class="count" id="qCount" hidden></span></button>
+    <button type="button" data-go="sms"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-5 4z"/></svg><span data-i18n="smsNav"></span></button>
+    <button type="button" data-go="me"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span data-i18n="nMe"></span></button>
+  </div>
+</nav>
+
+<div id="sheetHost"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+(function () {
+  const C = window.TUCTA_CONFIG, API = window.TuctaAPI, ls = API.ls;
+  const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+
+  /* ---------------- icons ---------------- */
+  const I = {
+    wages: '<path d="M3 7h18v10H3z"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4M18 10v4"/>',
+    passport: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M9 16h6"/>',
+    abuse: '<path d="M12 3l9 4v5c0 5-3.8 8.6-9 9.5C6.8 20.6 3 17 3 12V7z"/><path d="M12 8v5M12 16v.5"/>',
+    health: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M9 11h6M12 8v6"/>',
+    contract: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+    legal: '<path d="M12 4v16M5 20h14M6 8h12"/><path d="M6 8l-3 6a3 3 0 0 0 6 0zM18 8l-3 6a3 3 0 0 0 6 0z"/>',
+    return: '<path d="M3 15l18-6-6 12-3-5z"/><path d="M12 16l-3 5"/>',
+    other: '<circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/>',
+    sos: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+    checkin: '<path d="M5 12l5 5 9-10"/>',
+    pin: '<path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/>'
+  };
+  const svg = (k, s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[k] || I.other}</svg>`;
+
+  /* ---------------- words ---------------- */
+  const T = {
+    en: {
+      online: "Online", offline: "Offline", offBanner: "No internet. Reports wait and send later, or use SMS now.",
+      s1Title: "Welcome. Let's set you up.", s2Title: "Where do you work and live?", s3Title: "Who should we call?",
+      regIntro: "Three short steps. Your details go only to the Resource Centre staff, so they can find and help you fast.",
+      fullName: "Full name", phoneAbroad: "Phone number where you work", phoneHome: "Family phone in Tanzania (optional)",
+      passport: "Passport number (optional)", country: "Country", countryOther: "Name of the country", city: "City or town",
+      detect: "Find me with GPS", detecting: "Finding your location…", detectFail: "Could not find you. Type it in instead.",
+      address: "Where you live: address, building, landmark", employer: "Employer or agency", employerPhone: "Employer phone",
+      job: "Type of work", emName: "Emergency contact name", emPhone: "Emergency contact phone",
+      consent: "I agree that THC may receive my location when I send an SOS, report a problem, or open this app.",
+      next: "Next", back: "Back", finish: "Start using THC", required: "Please fill in: ", consentNeeded: "Tick the box so we can locate you in an emergency.",
+      hello: "Hello", stay: "Stay safe today",
+      sosPress: "TAP FOR HELP", sosHint: "In danger? Tap SOS. We get your name and exact location in seconds.",
+      cdTitle: "Sending SOS", cancel: "Cancel", sendNow: "Send now", gettingLoc: "Getting your GPS location…",
+      sosSentT: "SOS sent", sosSentB: "Received at {t}. Keep your phone on. Staff will contact you.",
+      sosQueuedT: "Saved on your phone", sosQueuedB: "No internet. It will send by itself when you reconnect. Send an SMS now too.",
+      locNone: "Location not shared", locTap: "Tap to update", locUpdated: "Updated {t}", safe: "I'm safe",
+      checkedIn: "Check-in sent", checkinQueued: "Saved. Sends when you are online.",
+      locDenied: "Location is off. Allow location for this app in phone settings.", locFail: "No GPS signal. Move near a window and try again.",
+      quickTitle: "Report a problem", quickHint: "2 taps",
+      sheetNote: "Add details (optional)", sheetPh: "What happened? Who? When?", attach: "Your location and details are attached",
+      sendReport: "Send report", sentT: "Report sent", sentB: "Reference {r}. Staff will contact you.", queuedT: "Saved on your phone", queuedB: "Reference {r}. It sends when you have internet.",
+      close: "Close", smsInstead: "Send by SMS",
+      smsNav: "SMS", nHome: "Home", nActivity: "Reports", nMe: "Me",
+      smsTitle: "No internet?", smsIntro: "GPS works without internet. Send your location by normal SMS.",
+      smsBtn: "Open SMS with my location", copy: "Copy message", copied: "Copied", callLabel: "Hotline", smsLabel: "SMS number",
+      smsNote: "If the button does not open your messages, copy the text and send it to the SMS number.",
+      histTitle: "Your reports", histEmpty: "No reports yet. Anything you send appears here.", st_sent: "Delivered", st_queued: "Waiting",
+      profileTitle: "My details", edit: "Edit", dashboardLink: "THC Centre (staff)", locTitle: "My location", refresh: "Update location", openMap: "Open map",
+      accuracy: "Accurate to about {m} m",
+      demoNote: "Demo mode: reports are saved in this browser only. Open the Staff Case Desk in the same browser to see them arrive.",
+      k_sos: "SOS", k_help: "Report", k_checkin: "I'm safe", k_register: "Registration",
+      p_name: "Name", p_phone: "Phone", p_country: "Country", p_city: "City", p_address: "Lives at", p_employer: "Employer", p_passport: "Passport", p_em: "Emergency contact",
+      other: "Other",
+      st_new: "Received", st_in_progress: "Centre is helping", st_resolved: "Resolved",
+      fromCentre: "Message from the Centre", newMsg: "New message from the Centre", reply: "Reply", replyPh: "Write your answer…",
+      threadEmpty: "The Centre will reply here.", offlineReply: "No internet. Use SMS or call the hotline.", centre: "Centre", tapOpen: "Tap a report to see messages"
+    },
+    sw: {
+      online: "Mtandaoni", offline: "Nje ya mtandao", offBanner: "Hakuna intaneti. Ripoti zitatumwa baadaye, au tumia SMS sasa.",
+      s1Title: "Karibu. Tuanze.", s2Title: "Unafanya kazi na kuishi wapi?", s3Title: "Tumpigie nani?",
+      regIntro: "Hatua tatu fupi. Taarifa zako zinakwenda kwa wafanyakazi wa Kituo tu, ili wakupate na kukusaidia haraka.",
+      fullName: "Jina kamili", phoneAbroad: "Namba ya simu unakofanya kazi", phoneHome: "Namba ya familia Tanzania (si lazima)",
+      passport: "Namba ya pasipoti (si lazima)", country: "Nchi", countryOther: "Jina la nchi", city: "Mji",
+      detect: "Nitafute kwa GPS", detecting: "Tunatafuta mahali ulipo…", detectFail: "Hatukukupata. Andika mwenyewe.",
+      address: "Unapoishi: anwani, jengo, alama ya karibu", employer: "Mwajiri au wakala", employerPhone: "Simu ya mwajiri",
+      job: "Aina ya kazi", emName: "Jina la mtu wa dharura", emPhone: "Simu ya mtu wa dharura",
+      consent: "Nakubali THC ipokee mahali nilipo ninapotuma SOS, kuripoti tatizo, au kufungua programu hii.",
+      next: "Endelea", back: "Rudi", finish: "Anza kutumia THC", required: "Tafadhali jaza: ", consentNeeded: "Weka alama ili tukupate wakati wa dharura.",
+      hello: "Habari", stay: "Kaa salama leo",
+      sosPress: "GUSA KUPATA MSAADA", sosHint: "Uko hatarini? Gusa SOS. Tunapata jina lako na mahali ulipo ndani ya sekunde.",
+      cdTitle: "SOS inatumwa", cancel: "Ghairi", sendNow: "Tuma sasa", gettingLoc: "Tunapata mahali ulipo kwa GPS…",
+      sosSentT: "SOS imetumwa", sosSentB: "Imepokelewa saa {t}. Weka simu wazi. Wafanyakazi watawasiliana nawe.",
+      sosQueuedT: "Imehifadhiwa kwenye simu", sosQueuedB: "Hakuna intaneti. Itatumwa yenyewe ukipata mtandao. Tuma SMS pia sasa.",
+      locNone: "Mahali hapajatumwa", locTap: "Gusa kusasisha", locUpdated: "Imesasishwa {t}", safe: "Niko salama",
+      checkedIn: "Ripoti ya usalama imetumwa", checkinQueued: "Imehifadhiwa. Itatumwa ukiwa mtandaoni.",
+      locDenied: "Mahali pamezimwa. Ruhusu mahali kwa programu hii kwenye mipangilio.", locFail: "Hakuna GPS. Sogea karibu na dirisha ujaribu tena.",
+      quickTitle: "Ripoti tatizo", quickHint: "Mguso 2",
+      sheetNote: "Ongeza maelezo (si lazima)", sheetPh: "Nini kimetokea? Nani? Lini?", attach: "Mahali ulipo na taarifa zako zimeambatishwa",
+      sendReport: "Tuma ripoti", sentT: "Ripoti imetumwa", sentB: "Kumbukumbu {r}. Wafanyakazi watawasiliana nawe.", queuedT: "Imehifadhiwa kwenye simu", queuedB: "Kumbukumbu {r}. Itatumwa ukipata intaneti.",
+      close: "Funga", smsInstead: "Tuma kwa SMS",
+      smsNav: "SMS", nHome: "Mwanzo", nActivity: "Ripoti", nMe: "Mimi",
+      smsTitle: "Hakuna intaneti?", smsIntro: "GPS inafanya kazi bila intaneti. Tuma mahali ulipo kwa SMS ya kawaida.",
+      smsBtn: "Fungua SMS yenye mahali nilipo", copy: "Nakili ujumbe", copied: "Imenakiliwa", callLabel: "Simu ya msaada", smsLabel: "Namba ya SMS",
+      smsNote: "Kitufe kisipofungua ujumbe, nakili maandishi uyatume kwa namba ya SMS.",
+      histTitle: "Ripoti zako", histEmpty: "Bado hakuna ripoti. Utakachotuma kitaonekana hapa.", st_sent: "Imefika", st_queued: "Inasubiri",
+      profileTitle: "Taarifa zangu", edit: "Badilisha", dashboardLink: "THC Centre (wafanyakazi)", locTitle: "Mahali nilipo", refresh: "Sasisha mahali", openMap: "Fungua ramani",
+      accuracy: "Usahihi wa takriban mita {m}",
+      demoNote: "Hali ya majaribio: ripoti zinahifadhiwa kwenye kivinjari hiki tu. Fungua dashibodi ya wafanyakazi kwenye kivinjari hiki kuziona.",
+      k_sos: "SOS", k_help: "Ripoti", k_checkin: "Niko salama", k_register: "Usajili",
+      p_name: "Jina", p_phone: "Simu", p_country: "Nchi", p_city: "Mji", p_address: "Anaishi", p_employer: "Mwajiri", p_passport: "Pasipoti", p_em: "Mtu wa dharura",
+      other: "Nyingine",
+      st_new: "Imepokelewa", st_in_progress: "Kituo kinakusaidia", st_resolved: "Imetatuliwa",
+      fromCentre: "Ujumbe kutoka Kituo", newMsg: "Ujumbe mpya kutoka Kituo", reply: "Jibu", replyPh: "Andika jibu lako…",
+      threadEmpty: "Kituo kitajibu hapa.", offlineReply: "Hakuna intaneti. Tumia SMS au piga simu ya msaada.", centre: "Kituo", tapOpen: "Gusa ripoti kuona ujumbe"
+    }
+  };
+  const CATS = [
+    ["wages", "Unpaid wages", "Mshahara haujalipwa"], ["passport", "Passport taken", "Pasipoti imechukuliwa"],
+    ["abuse", "Abuse", "Unyanyasaji"], ["health", "Sick or injured", "Ugonjwa au jeraha"],
+    ["contract", "Contract problem", "Tatizo la mkataba"], ["legal", "Legal help", "Msaada wa kisheria"],
+    ["return", "Return home", "Kurudi nyumbani"], ["other", "Other", "Mengineyo"]
+  ];
+  const JOBS = [
+    ["domestic", "Domestic worker", "Kazi za nyumbani"], ["driver", "Driver", "Udereva"], ["construction", "Construction", "Ujenzi"],
+    ["hotel", "Hotel or restaurant", "Hoteli na migahawa"], ["security", "Security guard", "Ulinzi"], ["cleaning", "Cleaning", "Usafi"],
+    ["care", "Care worker", "Uuguzi wa nyumbani"], ["farm", "Farm", "Kilimo"], ["other", "Other", "Nyingine"]
+  ];
+  const COUNTRIES = ["Oman", "Saudi Arabia", "United Arab Emirates", "Qatar", "Kuwait", "Bahrain", "Jordan", "Lebanon", "Iraq", "Kenya", "Uganda", "South Africa", "Turkey", "Poland", "United Kingdom"];
+
+  let lang = ls.get("tucta_lang", "sw");
+  const t = (k, v) => { let s = T[lang][k] ?? T.en[k] ?? k; if (v) for (const x in v) s = s.replace("{" + x + "}", v[x]); return s; };
+  const li = () => lang === "sw" ? 2 : 1;
+  const catLabel = c => { const x = CATS.find(y => y[0] === c); return x ? x[li()] : ""; };
+
+  /* ---------------- state ---------------- */
+  let profile = ls.get("tucta_profile", null);
+  let workerId = ls.get("tucta_worker_id", null);
+  if (!workerId) { workerId = API.uuid(); ls.set("tucta_worker_id", workerId); }
+  let lastLoc = ls.get("tucta_last_loc", null);
+  let outbox = ls.get("tucta_outbox", []);
+  let history = ls.get("tucta_history", []);
+  let view = "home", step = 1;
+  let feed = ls.get("thc_feed", { events: [], replies: [] });     // status + messages from the Centre
+  let readAt = ls.get("thc_read_at", "");                          // last time the worker opened the messages
+
+  /* ---------------- helpers ---------------- */
+  const vibrate = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+  function toast(m) { const el = $("#toast"); el.hidden = true; void el.offsetWidth; el.textContent = m; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
+  const fmtTime = iso => new Date(iso).toLocaleString(lang === "sw" ? "sw-TZ" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const ref = id => id.slice(0, 8).toUpperCase();
+  function ago(iso) {
+    const m = Math.round((Date.now() - new Date(iso)) / 60000);
+    if (lang === "sw") return m < 1 ? "sasa hivi" : m < 60 ? `dakika ${m} zilizopita` : m < 1440 ? `saa ${Math.round(m / 60)} zilizopita` : `siku ${Math.round(m / 1440)} zilizopita`;
+    return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+  }
+  const mapUrl = l => `https://www.google.com/maps?q=${l.lat},${l.lng}`;
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ---------------- location ---------------- */
+  function getLocation() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject({ code: 0 });
+      navigator.geolocation.getCurrentPosition(p => resolve({
+        lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), accuracy: Math.round(p.coords.accuracy),
+        time: new Date().toISOString(), place: lastLoc?.place || ""
+      }), reject, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
+    });
+  }
+  async function reverseGeocode(loc) {
+    if (!navigator.onLine) return null;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=16&accept-language=en&lat=${loc.lat}&lon=${loc.lng}`);
+      if (!r.ok) return null;
+      const a = (await r.json()).address || {};
+      return { country: a.country || "", city: a.city || a.town || a.village || a.state || "", place: [a.road, a.suburb || a.neighbourhood, a.city || a.town || a.village, a.country].filter(Boolean).join(", ") };
+    } catch (e) { return null; }
+  }
+  async function refreshLocation() {
+    const loc = await getLocation();
+    lastLoc = loc; ls.set("tucta_last_loc", lastLoc); $("#locErr").hidden = true; renderLoc(); renderSms();
+    reverseGeocode(loc).then(g => { if (g && lastLoc === loc) { loc.place = g.place; ls.set("tucta_last_loc", loc); renderLoc(); renderSms(); } });
+    return loc;
+  }
+  function locError(err) { const el = $("#locErr"); el.hidden = false; el.textContent = err && err.code === 1 ? t("locDenied") : t("locFail"); }
+
+  /* ---------------- sending ---------------- */
+  function makeEvent(kind, extra) {
+    const l = lastLoc;
+    return Object.assign({
+      id: API.uuid(), created_at: new Date().toISOString(), worker_id: workerId, kind, category: null, message: null,
+      lat: l ? l.lat : null, lng: l ? l.lng : null, accuracy: l ? l.accuracy : null, loc_time: l ? l.time : null, place: l ? l.place : null,
+      worker: profile, channel: "app"
+    }, extra || {});
+  }
+  let flushing = false;
+  async function flush() {
+    if (flushing) return; flushing = true;
+    try {
+      while (outbox.length && navigator.onLine) {
+        const ev = outbox[0];
+        try { await API.sendEvent(ev); } catch (e) { break; }
+        outbox.shift(); ls.set("tucta_outbox", outbox);
+        const h = history.find(x => x.id === ev.id); if (h) h.state = "sent";
+        ls.set("tucta_history", history);
+      }
+    } finally { flushing = false; renderFeed(); renderNet(); }
+  }
+  async function send(kind, extra) {
+    const ev = makeEvent(kind, extra);
+    outbox.push(ev); ls.set("tucta_outbox", outbox);
+    history.unshift({ id: ev.id, kind: ev.kind, category: ev.category, message: ev.message, created_at: ev.created_at, state: "queued" });
+    history = history.slice(0, 80); ls.set("tucta_history", history);
+    await flush();
+    pollFeed();
+    return { ev, delivered: !outbox.some(x => x.id === ev.id) };
+  }
+
+  /* ---------------- render ---------------- */
+  function applyLang() {
+    document.documentElement.lang = lang;
+    $$("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+    $$("[data-lang]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    const jobSel = $("#f_job"), jv = jobSel.value;
+    jobSel.innerHTML = JOBS.map(j => `<option value="${j[0]}">${j[li()]}</option>`).join(""); if (jv) jobSel.value = jv;
+    const cSel = $("#f_country"), cv = cSel.value;
+    cSel.innerHTML = `<option value="">—</option>` + COUNTRIES.map(c => `<option>${c}</option>`).join("") + `<option value="__other">${t("other")}</option>`; if (cv) cSel.value = cv;
+    $("#demoNote").textContent = t("demoNote"); $("#demoNote").hidden = API.LIVE;
+    $("#orgName").textContent = C.ORG_NAME;
+    renderTiles(); renderStep(false); renderNet(); renderLoc(); renderFeed(); renderProfile(); renderSms(); renderHello();
+  }
+  function renderHello() {
+    if (!profile) return;
+    $("#helloSub").textContent = t("stay");
+    $("#helloName").textContent = `${t("hello")}, ${profile.full_name.split(" ")[0]}`;
+  }
+  function renderTiles() {
+    $("#tiles").innerHTML = CATS.map((c, i) => `<button type="button" class="tile" style="--i:${i}" data-cat="${c[0]}"><span class="ic">${svg(c[0], 24)}</span>${c[li()]}</button>`).join("");
+  }
+  function renderNet() {
+    const on = navigator.onLine;
+    $("#net").classList.toggle("off", !on); $("#net span").textContent = on ? t("online") : t("offline");
+    $("#offbar").hidden = on || !profile;
+    renderCentre();
+  }
+  function renderLoc() {
+    if (!lastLoc) { $("#locPlace").textContent = t("locNone"); $("#locAge").textContent = t("locTap"); $("#meCoords").textContent = "—"; $("#meAcc").textContent = ""; $("#mapLink").hidden = true; return; }
+    $("#locPlace").textContent = lastLoc.place || `${lastLoc.lat.toFixed(4)}, ${lastLoc.lng.toFixed(4)}`;
+    $("#locAge").textContent = t("locUpdated", { t: ago(lastLoc.time) }) + ` · ±${lastLoc.accuracy} m`;
+    $("#meCoords").textContent = `${lastLoc.lat.toFixed(5)}, ${lastLoc.lng.toFixed(5)}`;
+    $("#meAcc").textContent = t("accuracy", { m: lastLoc.accuracy }) + " · " + ago(lastLoc.time);
+    const m = $("#mapLink"); m.href = mapUrl(lastLoc); m.hidden = false;
+  }
+  const serverStatus = id => (feed.events.find(e => e.id === id) || {}).status;
+  const unreadFor = id => feed.replies.filter(r => r.event_id === id && r.sender === "staff" && r.created_at > readAt).length;
+  const unreadAll = () => feed.replies.filter(r => r.sender === "staff" && r.created_at > readAt).length;
+  function renderFeed() {
+    const items = history.filter(h => h.kind !== "register" && h.message !== "auto");
+    const ul = $("#feed");
+    if (!items.length) { ul.innerHTML = `<li class="empty-state" style="display:grid;grid-template-columns:1fr;border:0;background:none">${svg("checkin", 32)}<span>${t("histEmpty")}</span></li>`; return; }
+    ul.innerHTML = items.map((h, i) => {
+      const ic = h.kind === "help" ? h.category : h.kind;
+      const titleTxt = h.kind === "help" ? catLabel(h.category) : t("k_" + h.kind);
+      const ss = h.state === "sent" && (h.kind === "sos" || h.kind === "help") ? serverStatus(h.id) : null;
+      const n = unreadFor(h.id);
+      const tap = h.kind === "sos" || h.kind === "help";
+      return `<li style="--i:${Math.min(i, 10)}" class="${tap ? "tap" : ""}" ${tap ? `data-case="${h.id}" role="button" tabindex="0"` : ""}><span class="ic ${h.kind}">${svg(ic, 20)}</span><b>${esc(titleTxt)}</b><span class="badge ${ss || h.state}">${t("st_" + (ss || h.state))}</span><span class="meta">${fmtTime(h.created_at)} · ${ref(h.id)}</span>${n ? `<span class="msgdot">● ${t("newMsg")}</span>` : ""}</li>`;
+    }).join("");
+  }
+  function renderCentre() {
+    const q = $("#qCount"), n = unreadAll() + outbox.length;
+    q.hidden = !n; q.textContent = n;
+    const last = feed.replies.filter(r => r.sender === "staff").slice(-1)[0];
+    const slot = $("#centreSlot");
+    if (!last || serverStatus(last.event_id) === "resolved" || Date.now() - new Date(last.created_at) > 14 * 864e5) { slot.innerHTML = ""; return; }
+    const unread = last.created_at > readAt;
+    slot.innerHTML = `<button type="button" class="centre-msg" data-case="${esc(last.event_id)}"><span class="eyebrow">${unread ? "<i></i>" : ""}${t(unread ? "newMsg" : "fromCentre")} · ${esc(last.staff_name || t("centre"))}</span><p>${esc(last.body)}</p><span class="r">${t("reply")} →</span></button>`;
+  }
+  async function pollFeed() {
+    if (!profile || !navigator.onLine) return;
+    try {
+      const f = await API.workerFeed(workerId);
+      const before = new Set(feed.replies.map(r => r.id));
+      const incoming = (f.replies || []).filter(r => r.sender === "staff" && !before.has(r.id));
+      feed = { events: f.events || [], replies: f.replies || [] }; ls.set("thc_feed", feed);
+      if (incoming.length && pollFeed.ran) { vibrate([60, 60, 60]); toast(t("newMsg")); }
+      pollFeed.ran = true;
+      renderFeed(); renderCentre(); if (openThread) renderThread();
+    } catch (e) { /* try again later */ }
+  }
+  let openThread = null;
+  function openCaseThread(id) {
+    const h = history.find(x => x.id === id) || {};
+    const ic = h.kind === "help" ? h.category : "sos";
+    readAt = new Date().toISOString(); ls.set("thc_read_at", readAt);
+    openThread = id;
+    openSheet(`<div class="sheet-h"><span class="ic">${svg(ic, 26)}</span><div><span class="eyebrow">Ref ${ref(id)}</span><h2>${esc(h.kind === "help" ? catLabel(h.category) : "SOS")}</h2></div></div>
+      <div class="thread" id="thr"></div>
+      <div class="composer"><textarea id="thMsg" rows="1" placeholder="${esc(t("replyPh"))}"></textarea><button class="sendc" type="button" id="thSend" aria-label="${esc(t("reply"))}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 12l16-8-6 16-2-6z"/></svg></button></div>
+      <p class="small muted" id="thNote"></p>`, sh => {
+      renderThread();
+      sh.querySelector("#thSend").onclick = async () => {
+        const body = sh.querySelector("#thMsg").value.trim(); if (!body) return;
+        try { const row = await API.workerReply(workerId, id, body); feed.replies.push(row); ls.set("thc_feed", feed); sh.querySelector("#thMsg").value = ""; vibrate(10); renderThread(); }
+        catch (e) { sh.querySelector("#thNote").textContent = t("offlineReply"); }
+      };
+    });
+    renderFeed(); renderCentre();
+  }
+  function renderThread() {
+    const el = $("#thr"); if (!el) { openThread = null; return; }
+    const h = history.find(x => x.id === openThread) || {};
+    const ss = serverStatus(openThread);
+    const rows = feed.replies.filter(r => r.event_id === openThread);
+    el.innerHTML = `<div class="bub worker">${esc(h.kind === "help" ? catLabel(h.category) : "SOS")}${h.message ? "<br>" + esc(h.message) : ""}<small>${fmtTime(h.created_at || new Date().toISOString())}</small></div>`
+      + rows.map(r => `<div class="bub ${r.sender}">${esc(r.body)}<small>${r.sender === "staff" ? esc(r.staff_name || t("centre")) + " · " : ""}${fmtTime(r.created_at)}</small></div>`).join("")
+      + (!rows.length ? `<p class="small muted" style="text-align:center">${t("threadEmpty")}</p>` : "")
+      + (ss ? `<p class="small" style="text-align:center"><span class="badge ${ss}">${t("st_" + ss)}</span></p>` : "");
+    el.scrollTop = el.scrollHeight;
+  }
+  document.addEventListener("click", e => { const c = e.target.closest("[data-case]"); if (c && !e.target.closest(".sheet")) openCaseThread(c.dataset.case); });
+  function renderProfile() {
+    if (!profile) return;
+    const rows = [["p_name", profile.full_name], ["p_phone", profile.phone], ["p_country", profile.country], ["p_city", profile.city], ["p_address", profile.address], ["p_employer", profile.employer], ["p_passport", profile.passport_no], ["p_em", [profile.emergency_name, profile.emergency_phone].filter(Boolean).join(" · ")]].filter(r => r[1]);
+    $("#profile").innerHTML = rows.map(r => `<dt>${t(r[0])}</dt><dd>${esc(r[1])}</dd>`).join("");
+  }
+  function smsBody() {
+    const p = profile || {}, l = lastLoc;
+    const parts = ["THC SOS", p.full_name, p.phone, p.passport_no ? "PP " + p.passport_no : "", [p.city, p.country].filter(Boolean).join(", "), p.address ? "Home: " + p.address : ""];
+    if (l) parts.push(`GPS ${l.lat.toFixed(5)},${l.lng.toFixed(5)} ±${l.accuracy}m ${mapUrl(l)}`, "Time " + new Date(l.time).toISOString().slice(0, 16).replace("T", " ") + " UTC");
+    else parts.push("GPS: not available");
+    parts.push("Ref " + ref(workerId));
+    return parts.filter(Boolean).join(" | ");
+  }
+  function renderSms() {
+    $("#smsNum").textContent = C.SMS_NUMBER; $("#callNum").textContent = C.HOTLINE_NUMBER;
+    const body = smsBody(); $("#smsText").value = body;
+    $("#smsLink").href = `sms:${C.SMS_NUMBER.replace(/[^\d+]/g, "")}?&body=${encodeURIComponent(body)}`;
+    const wa = $("#waLink"); wa.hidden = !C.WHATSAPP_NUMBER;
+    if (C.WHATSAPP_NUMBER) wa.href = `https://wa.me/${C.WHATSAPP_NUMBER}?text=${encodeURIComponent(body)}`;
+  }
+
+  /* ---------------- navigation ---------------- */
+  const VIEWS = ["home", "activity", "sms", "me"];
+  function go(v) {
+    view = v;
+    VIEWS.forEach(x => { const el = $("#v-" + x); const show = x === v; if (show && el.hidden) { el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; } else if (!show) el.hidden = true; });
+    $$(".nav [data-go]").forEach(b => b.dataset.go === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+    $("#ind").style.transform = `translateX(${VIEWS.indexOf(v) * 100}%)`;
+    if (v === "activity") renderFeed();
+    window.scrollTo({ top: 0 });
+  }
+  document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) { go(b.dataset.go); vibrate(8); } });
+  function showApp() { $("#onb").hidden = true; $("#nav").hidden = false; go("home"); renderNet(); }
+
+  /* ---------------- onboarding ---------------- */
+  const REQ = { 1: [["full_name", "fullName"], ["phone", "phoneAbroad"]], 2: [["country", "country"], ["city", "city"], ["address", "address"]] };
+  function renderStep(animate, backwards) {
+    $$(".step").forEach(s => { const on = +s.dataset.step === step; s.hidden = !on; if (on && animate) { s.classList.toggle("back", !!backwards); s.style.animation = "none"; void s.offsetWidth; s.style.animation = ""; } });
+    $$(".steps i").forEach((b, i) => b.classList.toggle("on", i < step));
+    $("#backBtn").hidden = step === 1;
+    $("#nextBtn").style.gridColumn = step === 1 ? "1 / -1" : "2";
+    $("#nextBtn").textContent = step === 3 ? t("finish") : t("next");
+  }
+  function startOnboarding() { step = 1; $("#onb").hidden = false; $("#nav").hidden = true; VIEWS.forEach(x => $("#v-" + x).hidden = true); $("#offbar").hidden = true; renderStep(true); }
+  function formVal(k) { const f = $("#regForm").elements; let v = (f[k].value || "").trim(); if (k === "country" && v === "__other") v = (f.country_other.value || "").trim(); return v; }
+  function fail(msg) { const e = $("#regErr"); e.hidden = false; e.textContent = msg; const c = $(`.step[data-step="${step}"]`); c.classList.remove("shake"); void c.offsetWidth; c.classList.add("shake"); vibrate([30, 40, 30]); }
+  $("#backBtn").addEventListener("click", () => { step--; $("#regErr").hidden = true; renderStep(true, true); });
+  $("#regForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (step < 3) {
+      const missing = (REQ[step] || []).filter(m => !formVal(m[0])).map(m => t(m[1]));
+      if (missing.length) return fail(t("required") + missing.join(", "));
+      $("#regErr").hidden = true; step++; renderStep(true); return;
+    }
+    if (!$("#f_consent").checked) return fail(t("consentNeeded"));
+    const F = ["full_name", "phone", "phone_tz", "passport_no", "country", "city", "address", "employer", "employer_phone", "job", "emergency_name", "emergency_phone"];
+    const p = {}; F.forEach(k => p[k] = formVal(k)); p.consent = true; p.language = lang;
+    profile = p; ls.set("tucta_profile", profile);
+    renderProfile(); renderHello(); renderSms(); showApp();
+    try { await refreshLocation(); } catch (err) { locError(err); }
+    await send("register"); ls.set("tucta_last_auto", Date.now());
+  });
+  $("#f_country").addEventListener("change", e => $("#otherCountryWrap").hidden = e.target.value !== "__other");
+  $("#detectBtn").addEventListener("click", async () => {
+    const msg = $("#detectMsg"); msg.hidden = false; msg.textContent = t("detecting");
+    try {
+      const loc = await refreshLocation(); const g = await reverseGeocode(loc);
+      if (!g) { msg.textContent = `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`; return; }
+      const f = $("#regForm").elements;
+      if (COUNTRIES.includes(g.country)) { f.country.value = g.country; $("#otherCountryWrap").hidden = true; }
+      else if (g.country) { f.country.value = "__other"; f.country_other.value = g.country; $("#otherCountryWrap").hidden = false; }
+      if (g.city) f.city.value = g.city;
+      if (!f.address.value && g.place) f.address.value = g.place;
+      msg.textContent = g.place;
+    } catch (err) { msg.textContent = t("detectFail"); }
+  });
+  $("#editBtn").addEventListener("click", () => {
+    const f = $("#regForm").elements;
+    ["full_name", "phone", "phone_tz", "passport_no", "city", "address", "employer", "employer_phone", "job", "emergency_name", "emergency_phone"].forEach(k => { if (profile[k] != null) f[k].value = profile[k]; });
+    if (COUNTRIES.includes(profile.country)) f.country.value = profile.country; else { f.country.value = "__other"; f.country_other.value = profile.country; $("#otherCountryWrap").hidden = false; }
+    $("#f_consent").checked = true; startOnboarding();
+  });
+
+  /* ---------------- bottom sheet ---------------- */
+  function openSheet(html, onMount) {
+    closeSheet(true);
+    const host = $("#sheetHost");
+    host.innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
+    host.querySelector("[data-close]").onclick = () => closeSheet();
+    onMount && onMount(host.querySelector(".sheet"));
+  }
+  function closeSheet(now) {
+    const host = $("#sheetHost"); if (!host.innerHTML) return;
+    if (now) { host.innerHTML = ""; return; }
+    host.querySelector(".sheet").classList.add("closing"); host.querySelector(".scrim").classList.add("closing");
+    setTimeout(() => host.innerHTML = "", 240);
+  }
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+  const doneHtml = (ok, title, body) => `<div class="done">
+      <svg width="76" height="76" viewBox="0 0 60 60" fill="none" stroke="${ok ? "var(--ok)" : "var(--warn)"}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="30" cy="30" r="25"/>${ok ? '<path d="M19 31l7 7 15-16"/>' : '<path d="M30 17v15l8 5"/>'}</svg>
+      <h2>${esc(title)}</h2><p class="muted">${esc(body)}</p></div>
+      <div class="row" style="display:grid;grid-template-columns:${ok ? "1fr" : "1fr 1fr"};gap:10px">${ok ? "" : `<button class="btn danger big" type="button" data-sms>${t("smsInstead")}</button>`}<button class="btn primary big" type="button" data-x>${t("close")}</button></div>`;
+  function wireDone(sh) { sh.querySelector("[data-x]").onclick = () => closeSheet(); const s = sh.querySelector("[data-sms]"); if (s) s.onclick = () => { closeSheet(); go("sms"); }; }
+
+  $("#tiles").addEventListener("click", e => {
+    const b = e.target.closest("[data-cat]"); if (!b) return;
+    vibrate(10);
+    const cat = b.dataset.cat;
+    refreshLocation().catch(() => {});
+    openSheet(`<div class="sheet-h"><span class="ic">${svg(cat, 26)}</span><div><span class="eyebrow">${t("quickTitle")}</span><h2>${esc(catLabel(cat))}</h2></div></div>
+      <label><span>${t("sheetNote")}</span><textarea id="sh_msg" rows="3" placeholder="${esc(t("sheetPh"))}"></textarea></label>
+      <p class="attach">${svg("pin", 18)}<span>${t("attach")}</span></p>
+      <button class="btn primary big" type="button" id="sh_send">${t("sendReport")}</button>`, sh => {
+      sh.querySelector("#sh_send").onclick = async ev => {
+        ev.currentTarget.disabled = true;
+        const { ev: rep, delivered } = await send("help", { category: cat, message: sh.querySelector("#sh_msg").value.trim() || null });
+        vibrate(delivered ? 20 : [20, 60, 20]);
+        sh.innerHTML = `<div class="grab"></div>` + doneHtml(delivered, t(delivered ? "sentT" : "queuedT"), t(delivered ? "sentB" : "queuedB", { r: ref(rep.id) }));
+        wireDone(sh);
+      };
+    });
+  });
+
+  /* ---------------- SOS ---------------- */
+  let cdTimer = null, cdLoc = null;
+  $("#sosBtn").addEventListener("click", () => {
+    vibrate([60, 40, 60]);
+    const ov = document.createElement("div"); ov.className = "cd"; ov.id = "cd"; ov.setAttribute("role", "alertdialog");
+    ov.innerHTML = `<div class="in"><p style="font-weight:800;font-size:1.1rem;letter-spacing:.04em">${t("cdTitle")}</p>
+      <div class="ringwrap"><svg width="190" height="190" viewBox="0 0 200 200"><circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="8"/><circle class="prog" cx="100" cy="100" r="90" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/></svg><span class="n" id="cdN">3</span></div>
+      <p class="small" id="cdLoc" style="opacity:.9">${t("gettingLoc")}</p>
+      <div class="btns"><button class="btn ghost" type="button" id="cdCancel">${t("cancel")}</button><button class="btn white" type="button" id="cdNow">${t("sendNow")}</button></div></div>`;
+    document.body.appendChild(ov); $("#cdNow").focus();
+    cdLoc = refreshLocation().then(l => { const el = $("#cdLoc"); if (el) el.textContent = `${l.lat.toFixed(5)}, ${l.lng.toFixed(5)} · ±${l.accuracy} m`; return l; })
+      .catch(err => { locError(err); const el = $("#cdLoc"); if (el) el.textContent = lastLoc ? `${lastLoc.lat.toFixed(5)}, ${lastLoc.lng.toFixed(5)} · ${ago(lastLoc.time)}` : t("locFail"); });
+    let n = 3;
+    cdTimer = setInterval(() => { n--; const el = $("#cdN"); if (el) el.textContent = n; vibrate(40); if (n <= 0) fireSos(); }, 1000);
+    $("#cdCancel").onclick = () => { clearInterval(cdTimer); ov.remove(); };
+    $("#cdNow").onclick = fireSos;
+  });
+  async function fireSos() {
+    clearInterval(cdTimer); const ov = $("#cd"); if (ov) ov.remove();
+    await Promise.race([cdLoc, new Promise(r => setTimeout(r, 8000))]);
+    const { delivered } = await send("sos");
+    vibrate(delivered ? [100] : [100, 80, 100, 80, 100]);
+    const time = new Date().toLocaleTimeString(lang === "sw" ? "sw-TZ" : "en-GB", { hour: "2-digit", minute: "2-digit" });
+    openSheet(doneHtml(delivered, t(delivered ? "sosSentT" : "sosQueuedT"), t(delivered ? "sosSentB" : "sosQueuedB", { t: time })), wireDone);
+  }
+
+  /* ---------------- check-in ---------------- */
+  async function checkin(btn) {
+    btn && (btn.disabled = true);
+    try { await refreshLocation(); } catch (e) { locError(e); }
+    const { delivered } = await send("checkin");
+    btn && (btn.disabled = false); vibrate(15); toast(delivered ? t("checkedIn") : t("checkinQueued"));
+  }
+  $("#safeBtn").addEventListener("click", e => checkin(e.currentTarget));
+  $("#locChip").addEventListener("click", () => refreshLocation().then(() => toast(t("locUpdated", { t: ago(new Date().toISOString()) }))).catch(locError));
+  $("#refreshLoc").addEventListener("click", () => refreshLocation().catch(locError));
+  $("#copyBtn").addEventListener("click", () => {
+    navigator.clipboard.writeText($("#smsText").value).then(() => toast(t("copied"))).catch(() => { const a = $("#smsText"); a.focus(); a.select(); });
+  });
+
+  /* ---------------- language & network ---------------- */
+  $$("[data-lang]").forEach(b => b.addEventListener("click", () => { lang = b.dataset.lang; ls.set("tucta_lang", lang); applyLang(); }));
+  window.addEventListener("online", () => { renderNet(); flush().then(pollFeed); });
+  window.addEventListener("storage", e => { if (e.key === "tucta_demo_events" || e.key === "tucta_demo_replies") pollFeed(); });
+  setInterval(pollFeed, API.LIVE ? 20000 : 4000);
+  window.addEventListener("offline", renderNet);
+  setInterval(() => { renderLoc(); if (navigator.onLine && outbox.length) flush(); }, 30000);
+
+  /* ---------------- start ---------------- */
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  applyLang();
+  if (!profile) startOnboarding();
+  else {
+    showApp(); flush().then(pollFeed);
+    const lastAuto = ls.get("tucta_last_auto", 0);
+    if (profile.consent && Date.now() - lastAuto > 6 * 3600 * 1000)
+      refreshLocation().then(() => { ls.set("tucta_last_auto", Date.now()); return send("checkin", { message: "auto" }); }).catch(() => {});
+  }
+})();
+</script>
+</body></html>
