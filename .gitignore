@@ -6,3 +6,4 @@ mobile/ios/
 mobile/capacitor.config.json
 __pycache__/
 .DS_Store
+web/site/

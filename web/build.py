@@ -8,3 +8,11 @@ for f in ["index.html","dashboard.html","centre.html"]:
 for f in ["styles.css","config.js","api.js","demo-data.js","sw.js","manifest.json","manifest-centre.json","icon-192.png","icon-512.png","icon-centre-192.png","icon-centre-512.png","supabase-schema.sql"]:
     shutil.copy(os.path.join(src,f),out)
 print("built",sorted(os.listdir(out)))
+
+# Also refresh the GitHub Pages copy (Pages publishes the repository's docs/ folder): docs/app/
+pages = os.path.join(os.path.dirname(src), "docs")
+if os.path.isdir(pages):
+    app = os.path.join(pages, "app")
+    shutil.rmtree(app, ignore_errors=True)
+    shutil.copytree(out, app, ignore=shutil.ignore_patterns("supabase-schema.sql"))
+    print("updated", app)

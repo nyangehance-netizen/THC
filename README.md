@@ -8,11 +8,12 @@ Built for the **TUCTA Migrant Workers Resource Centre**. One codebase, four apps
 | **THC Centre** | Call-centre staff: live SOS alarm, worker locations, call/SMS/WhatsApp, case status, messages to workers | ✓ | ✓ |
 
 The same apps also run as websites on GitHub Pages: **https://nyangehance-netizen.github.io/THC/**
-(`web/site/` holds the published website. After editing anything in `web/`, run `python3 web/build.py` and commit `web/site/` too.)
+(GitHub Pages publishes the `docs/` folder. After editing anything in `web/`, run `python3 web/build.py`, which also refreshes `docs/app/`, and commit both.)
 
 ## Folders
 
 ```
+docs/       the public website (GitHub Pages): start page + docs/app/
 web/        the apps (HTML/CSS/JS) + database setup (supabase-schema.sql) + web setup guide
 mobile/     Capacitor project that wraps the web apps into Android and iOS apps
 .github/    automatic builds on GitHub
