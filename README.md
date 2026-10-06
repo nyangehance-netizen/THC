@@ -7,7 +7,7 @@ Built for the **TUCTA Migrant Workers Resource Centre**. One codebase, four apps
 | **THC** | Migrant workers abroad: SOS with GPS, 2-tap reports, "I'm safe" check-ins, SMS fallback, messages from the Centre | ✓ | ✓ |
 | **THC Centre** | Call-centre staff: live SOS alarm, worker locations, call/SMS/WhatsApp, case status, messages to workers | ✓ | ✓ |
 
-The same apps also run as websites on GitHub Pages: **https://nyangehance-netizen.github.io/thc/**
+The same apps also run as websites on GitHub Pages: **https://nyangehance-netizen.github.io/THC/**
 (`web/site/` holds the published website. After editing anything in `web/`, run `python3 web/build.py` and commit `web/site/` too.)
 
 ## Folders
