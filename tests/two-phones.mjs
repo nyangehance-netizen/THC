@@ -46,7 +46,7 @@ await card.waitFor({ timeout: 20000 });
 log("Centre phone sees:", (await card.innerText()).replace(/\s+/g, " "));
 await card.click();
 await c.waitForSelector("#pBody .hero", { timeout: 10000 });
-const coords = await c.locator("#pBody .mono").first().innerText();
+const coords = await c.locator("#pBody .card span.mono").first().innerText();
 log("Centre phone, worker location:", coords);
 if (!coords.includes("23.58")) fail("worker GPS not shown at the Centre");
 
