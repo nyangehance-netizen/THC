@@ -41,6 +41,13 @@ fs.mkdirSync(www, { recursive: true });
 for (const f of app.files) fs.copyFileSync(path.join(site, f), path.join(www, f));
 let html = fs.readFileSync(path.join(site, app.page), "utf8");
 for (const re of app.strip) html = html.replace(re, "");
+// demo-mode notes: inside a phone app there is no "same browser" to share with the other app
+html = html.replace("Demo mode: reports are saved in this browser only. Open the Staff Case Desk in the same browser to see them arrive.",
+  "Demo version: reports are saved on this phone only and do not reach the Centre yet.");
+html = html.replace("Hali ya majaribio: ripoti zinahifadhiwa kwenye kivinjari hiki tu. Fungua dashibodi ya wafanyakazi kwenye kivinjari hiki kuziona.",
+  "Toleo la majaribio: ripoti zinahifadhiwa kwenye simu hii tu na bado hazifiki Kituoni.");
+html = html.replace("Reports sent from the THC worker app in this same browser arrive here live.",
+  "Workers' reports reach this app once the online database is connected.");
 // inside the native app there is no service worker or web manifest
 html = html.replace(/<link rel="manifest"[^>]*>\n?/, "");
 html = html.replace('if ("serviceWorker" in navigator && location.protocol === "https:")', "if (false)");
