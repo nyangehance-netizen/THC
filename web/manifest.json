@@ -1,6 +1,6 @@
 {
-  "name": "THC – Migrant Workers Help",
-  "short_name": "THC",
+  "name": "TMWRC – Migrant Workers Help",
+  "short_name": "TMWRC",
   "description": "SOS, location sharing and help requests for Tanzanian migrant workers, from the TUCTA Migrant Workers Resource Centre.",
   "start_url": "index.html",
   "scope": "./",

@@ -1,4 +1,4 @@
-<!doctype html><html lang="sw"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>THC Case Desk</title>
+<!doctype html><html lang="sw"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>TMWRC Case Desk</title>
 <meta name="theme-color" content="#F5F5F7">
 <meta name="color-scheme" content="light only">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -110,7 +110,7 @@
 
 <header class="topbar">
   <div class="topbar-in">
-    <div class="brand-name"><b>THC <span style="font-weight:400;color:var(--muted)">Case Desk</span></b><span id="orgName"></span></div>
+    <div class="brand-name"><b>TMWRC <span style="font-weight:400;color:var(--muted)">Case Desk</span></b><span id="orgName"></span></div>
     <div class="top-actions">
       <span id="mode" class="pill plain"></span>
       <button class="btn" id="signOut" type="button" hidden>Sign out</button>
@@ -270,7 +270,7 @@
     $("#st_late b").textContent = workers.filter(isLate).length;
     $("#lateLabel").textContent = `No contact ${LATE_H} h+`;
     $("#st_workers b").textContent = workers.length;
-    document.title = (openSos ? `(${openSos} SOS) ` : "") + "THC Case Desk";
+    document.title = (openSos ? `(${openSos} SOS) ` : "") + "TMWRC Case Desk";
   }
   function renderList() {
     const items = visibleCases();
@@ -351,7 +351,7 @@
         </div>
       </div>
       ${trail.length > 1 ? `<div style="display:grid;gap:6px"><span class="section-h">Recent positions</span><ul class="trail">${trail.map(x => `<li><span>${KIND[x.kind]} · ${fmt(x.created_at)}</span><a class="mono" href="${gmaps(x.lat, x.lng)}" target="_blank" rel="noopener">${x.lat.toFixed(4)}, ${x.lng.toFixed(4)}</a></li>`).join("")}</ul></div>` : ""}
-      ${isCase(e) ? `<div style="display:grid;gap:8px"><span class="section-h">Messages with the worker (shown in their THC app)</span>
+      ${isCase(e) ? `<div style="display:grid;gap:8px"><span class="section-h">Messages with the worker (shown in their TMWRC app)</span>
         <div class="thread">${replies.filter(r => r.event_id === e.id).map(r => `<div class="bub ${r.sender}">${esc(r.body)}<small>${r.sender === "staff" ? esc(r.staff_name || "Centre") : "Worker"} · ${fmt(r.created_at)}</small></div>`).join("") || `<p class="small muted">No messages yet.</p>`}</div>
         <div class="row" style="flex-wrap:nowrap"><input id="d_msg" placeholder="Write to the worker"><button class="btn primary" id="d_send" type="button">Send</button></div></div>` : ""}
       ${isCase(e) ? `<label>Staff notes<textarea id="d_note" rows="3" placeholder="Who was contacted, what was agreed, next step">${esc(e.staff_note || "")}</textarea></label>
@@ -422,7 +422,7 @@
     const m = s.match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/);
     if (m) { $("#lf_lat").value = m[1]; $("#lf_lng").value = m[2]; }
     const parts = s.split("|").map(x => x.trim());
-    if (/(THC|TUCTA) SOS/i.test(parts[0] || "")) {
+    if (/(TMWRC|THC|TUCTA) SOS/i.test(parts[0] || "")) {
       $("#lf_kind").value = "sos";
       if (parts[1] && !$("#lf_name").value) $("#lf_name").value = parts[1];
       if (parts[2] && !$("#lf_phone").value) $("#lf_phone").value = parts[2];

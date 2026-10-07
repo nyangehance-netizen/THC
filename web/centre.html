@@ -1,4 +1,4 @@
-<title>THC Centre</title>
+<title>TMWRC Centre</title>
 <meta name="theme-color" content="#F5F5F7">
 <meta name="color-scheme" content="light only">
 <link rel="manifest" href="manifest-centre.json">
@@ -198,7 +198,7 @@
 
 <div class="app">
   <header class="hdr">
-    <span class="logo">THC</span><span class="role">CENTRE</span>
+    <span class="logo">TMWRC</span><span class="role">CENTRE</span>
     <span class="grow"></span>
     <span class="live" id="live"><i></i><span id="liveTxt">Live</span></span>
     <button class="iconbtn" id="soundBtn" type="button" aria-pressed="false" aria-label="Sound alerts" title="Sound alerts">
@@ -209,7 +209,7 @@
   <section id="loginView" class="login" hidden>
     <form class="card" id="loginForm">
       <h2>Staff sign-in</h2>
-      <p class="small muted">THC Centre is for Resource Centre staff only.</p>
+      <p class="small muted">TMWRC Centre is for Resource Centre staff only.</p>
       <label>Email<input id="lg_email" type="email" autocomplete="username" required></label>
       <label>Password<input id="lg_pass" type="password" autocomplete="current-password" required></label>
       <p id="lgErr" class="note bad" hidden></p>
@@ -218,7 +218,7 @@
   </section>
 
   <main class="view" id="v-alerts" hidden>
-    <p id="demoNote" class="note small" hidden>Demo mode. Cases marked <span class="st ex">Example</span> are sample data. Reports sent from the THC worker app in this same browser arrive here live.</p>
+    <p id="demoNote" class="note small" hidden>Demo mode. Cases marked <span class="st ex">Example</span> are sample data. Reports sent from the TMWRC worker app in this same browser arrive here live.</p>
     <div class="sum">
       <button class="sos" id="s_sos" type="button"><b>0</b><span>Open SOS</span></button>
       <button id="s_help" type="button"><b>0</b><span>Reports</span></button>
@@ -350,7 +350,7 @@
   $("#notifBtn").onclick = async () => {
     if (!("Notification" in window)) { $("#notifMsg").textContent = "This phone's browser does not support notifications. Install the app to the home screen and try again."; return; }
     const p = await Notification.requestPermission().catch(() => "denied");
-    $("#notifMsg").textContent = p === "granted" ? "Notifications are on while THC Centre is open." : "Notifications were not allowed. You can change this in the phone's settings.";
+    $("#notifMsg").textContent = p === "granted" ? "Notifications are on while TMWRC Centre is open." : "Notifications were not allowed. You can change this in the phone's settings.";
   };
 
   /* ---------- data ---------- */
@@ -387,7 +387,7 @@
     $("#alarmHost").innerHTML = `<div class="alarm" role="alert"><b>NEW SOS</b><button type="button" id="alarmOpen">Open</button><span>${esc(p.full_name || "Worker")} · ${esc([p.city, p.country].filter(Boolean).join(", "))}</span></div>`;
     $("#alarmOpen").onclick = () => { $("#alarmHost").innerHTML = ""; openCase(e.id); };
     setTimeout(() => { $("#alarmHost").innerHTML = ""; }, 20000);
-    try { if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification("THC Centre: NEW SOS", { body: `${p.full_name || "Worker"}, ${p.city || ""} ${p.country || ""}`, tag: e.id, requireInteraction: true }); } catch (err) {}
+    try { if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification("TMWRC Centre: NEW SOS", { body: `${p.full_name || "Worker"}, ${p.city || ""} ${p.country || ""}`, tag: e.id, requireInteraction: true }); } catch (err) {}
   }
 
   /* ---------- render ---------- */
@@ -412,7 +412,7 @@
     $("#s_help b").textContent = events.filter(e => e.kind === "help" && e.status !== "resolved").length;
     $("#s_late b").textContent = workers.filter(isLate).length;
     const n = $("#navCount"); n.hidden = !s; n.textContent = s;
-    document.title = (s ? `(${s}) ` : "") + "THC Centre";
+    document.title = (s ? `(${s}) ` : "") + "TMWRC Centre";
   }
   function caseCard(e) {
     const p = e.worker || {}, sos = e.kind === "sos" && e.status !== "resolved";
@@ -425,7 +425,7 @@
   }
   function renderCases() {
     const items = visible();
-    $("#cases").innerHTML = items.length ? items.map(caseCard).join("") : `<div class="empty">Nothing here. New SOS alerts and reports from the THC app appear instantly.</div>`;
+    $("#cases").innerHTML = items.length ? items.map(caseCard).join("") : `<div class="empty">Nothing here. New SOS alerts and reports from the TMWRC app appear instantly.</div>`;
   }
   function renderWorkers() {
     const q = $("#wsearch").value.trim().toLowerCase();
@@ -542,7 +542,7 @@
         </div>
         <div class="quick" id="quick">${QUICK.map((q, i) => `<button type="button" data-q="${i}">${esc(q)}</button>`).join("")}</div>
         <div class="composer"><textarea id="msg" rows="1" placeholder="Write to the worker"></textarea><button class="send" type="button" id="sendMsg" aria-label="Send">${svg("send")}</button></div>
-        <span class="small muted">Shows in the worker's THC app. If they have no internet, also call or SMS.</span>
+        <span class="small muted">Shows in the worker's TMWRC app. If they have no internet, also call or SMS.</span>
       </div>` : ""}
       <details class="card"><summary>Worker details</summary>
         <dl class="kv" style="margin-top:10px">${kv([["Name", p.full_name], ["Passport", p.passport_no], ["Country", p.country], ["City", p.city], ["Work", p.job], ["Employer", p.employer], ["Employer phone", p.employer_phone], ["Emergency", [p.emergency_name, p.emergency_phone].filter(Boolean).join(" · ")]])}</dl>

@@ -1,6 +1,6 @@
 // Prepares one of the two native apps for Capacitor.
-//   node scripts/prepare.mjs worker   -> THC (migrant workers)
-//   node scripts/prepare.mjs centre   -> THC Centre (call centre staff)
+//   node scripts/prepare.mjs worker   -> TMWRC (migrant workers)
+//   node scripts/prepare.mjs centre   -> TMWRC Centre (call centre staff)
 // It copies the built web app (web/site) into mobile/www, makes the chosen page the start page,
 // writes capacitor.config.json and puts that app's icon and splash into mobile/assets.
 import fs from "node:fs";
@@ -14,16 +14,16 @@ const which = process.argv[2];
 
 const APPS = {
   worker: {
-    appId: process.env.WORKER_APP_ID || "tz.or.tucta.thc",
-    appName: "THC",
+    appId: process.env.WORKER_APP_ID || "tz.or.tucta.tmwrc",
+    appName: "TMWRC",
     page: "index.html",
     files: ["styles.css", "config.js", "api.js", "icon-192.png", "icon-512.png"],
     // remove the link to the staff app from the worker's app
     strip: [/ · <a href="centre\.html"[^>]*><\/a>/]
   },
   centre: {
-    appId: process.env.CENTRE_APP_ID || "tz.or.tucta.thccentre",
-    appName: "THC Centre",
+    appId: process.env.CENTRE_APP_ID || "tz.or.tucta.tmwrccentre",
+    appName: "TMWRC Centre",
     page: "centre.html",
     files: ["styles.css", "config.js", "api.js", "demo-data.js", "icon-centre-192.png", "icon-centre-512.png"],
     strip: [/<a class="btn" href="dashboard\.html">[^<]*<\/a>/]
@@ -46,7 +46,7 @@ html = html.replace("Demo mode: reports are saved in this browser only. Open the
   "Demo version: reports are saved on this phone only and do not reach the Centre yet.");
 html = html.replace("Hali ya majaribio: ripoti zinahifadhiwa kwenye kivinjari hiki tu. Fungua dashibodi ya wafanyakazi kwenye kivinjari hiki kuziona.",
   "Toleo la majaribio: ripoti zinahifadhiwa kwenye simu hii tu na bado hazifiki Kituoni.");
-html = html.replace("Reports sent from the THC worker app in this same browser arrive here live.",
+html = html.replace("Reports sent from the TMWRC worker app in this same browser arrive here live.",
   "Workers' reports reach this app once the online database is connected.");
 // inside the native app there is no service worker or web manifest
 html = html.replace(/<link rel="manifest"[^>]*>\n?/, "");

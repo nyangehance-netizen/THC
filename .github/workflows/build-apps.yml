@@ -1,8 +1,8 @@
 name: Build mobile apps
 
 # Builds 4 apps on every push to main (and on demand from the Actions tab):
-#   THC          (workers)      -> Android APK + AAB, iOS
-#   THC Centre   (call centre)  -> Android APK + AAB, iOS
+#   TMWRC          (workers)      -> Android APK + AAB, iOS
+#   TMWRC Centre   (call centre)  -> Android APK + AAB, iOS
 # Download them from the run page under "Artifacts".
 # Pushing a tag like v1.0.0 also publishes a GitHub Release with the Android APKs.
 
@@ -74,7 +74,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
           mkdir -p ../../out
-          cp app/build/outputs/apk/debug/app-debug.apk ../../out/THC-${{ matrix.app }}-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../../out/TMWRC-${{ matrix.app }}-debug.apk
 
       - name: Build signed release APK + AAB (Google Play)
         if: env.KEYSTORE_B64 != ''
@@ -89,9 +89,9 @@ jobs:
           BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
           $BT/zipalign -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
           $BT/apksigner sign --ks release.keystore --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS \
-            --out ../../out/THC-${{ matrix.app }}-release.apk aligned.apk
-          cp app/build/outputs/bundle/release/app-release.aab ../../out/THC-${{ matrix.app }}-release.aab
-          jarsigner -keystore release.keystore -storepass "$KS_PASS" -keypass "$KEY_PASS" ../../out/THC-${{ matrix.app }}-release.aab "$KEY_ALIAS"
+            --out ../../out/TMWRC-${{ matrix.app }}-release.apk aligned.apk
+          cp app/build/outputs/bundle/release/app-release.aab ../../out/TMWRC-${{ matrix.app }}-release.aab
+          jarsigner -keystore release.keystore -storepass "$KS_PASS" -keypass "$KEY_PASS" ../../out/TMWRC-${{ matrix.app }}-release.aab "$KEY_ALIAS"
           rm release.keystore
 
       - uses: actions/upload-artifact@v4
@@ -144,7 +144,7 @@ jobs:
           xcodebuild $SRC -scheme App -configuration Release -sdk iphonesimulator -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO build | tail -20
           mkdir -p ../../../out
-          (cd build/Build/Products/Release-iphonesimulator && zip -qry ../../../../../../../out/THC-${{ matrix.app }}-simulator.zip App.app)
+          (cd build/Build/Products/Release-iphonesimulator && zip -qry ../../../../../../../out/TMWRC-${{ matrix.app }}-simulator.zip App.app)
 
       - name: Build unsigned iPhone app (to sign later)
         working-directory: mobile/ios/App
@@ -153,7 +153,7 @@ jobs:
           xcodebuild $SRC -scheme App -configuration Release -sdk iphoneos -archivePath build/App.xcarchive \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive | tail -20
           mkdir -p Payload && cp -R build/App.xcarchive/Products/Applications/App.app Payload/
-          zip -qry ../../../out/THC-${{ matrix.app }}-unsigned.ipa Payload
+          zip -qry ../../../out/TMWRC-${{ matrix.app }}-unsigned.ipa Payload
 
       - name: Signed build for TestFlight / App Store
         if: env.CERT_B64 != ''
@@ -189,7 +189,7 @@ jobs:
           xcodebuild $SRC -scheme App -configuration Release -sdk iphoneos -archivePath build/Signed.xcarchive \
             DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Distribution" PROVISIONING_PROFILE_SPECIFIER="$NAME" archive | tail -20
           xcodebuild -exportArchive -archivePath build/Signed.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/export
-          cp build/export/*.ipa ../../../out/THC-${{ matrix.app }}-appstore.ipa
+          cp build/export/*.ipa ../../../out/TMWRC-${{ matrix.app }}-appstore.ipa
 
       - uses: actions/upload-artifact@v4
         with:

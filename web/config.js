@@ -5,7 +5,7 @@
 window.TUCTA_CONFIG = {
   // Name shown in the app header
   ORG_NAME: "TUCTA Migrant Workers Resource Centre",
-  SHORT_NAME: "THC",
+  SHORT_NAME: "TMWRC",
 
   // Phone number that receives SOS text messages (SMS) when a worker has no internet.
   // Use full international format. REPLACE THIS with the Centre's real number.

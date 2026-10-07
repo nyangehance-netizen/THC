@@ -1,4 +1,4 @@
-# THC — SOS and help app for migrant workers
+# TMWRC — SOS and help app for migrant workers
 
 Built for the **TUCTA Migrant Workers Resource Centre**.
 
@@ -7,14 +7,14 @@ Three linked parts, all using the same online database:
 | File | Who uses it | What it does |
 |---|---|---|
 | `index.html` | Workers abroad (phone) | Register; press **SOS**; ask for help (unpaid wages, passport taken, abuse, health, contract, legal, return home); **check in** "I am safe"; send location by **SMS** when there is no internet. Swahili and English. Installs on the phone like an app. |
-| `centre.html` | Resource Centre staff (phone) | **THC Centre** app: live SOS alarm (sound, vibration, notification), alert feed, one-tap Call / SMS / WhatsApp / Map to the worker, case status (New → Helping → Resolved), **messages to the worker** with quick replies in Swahili, map of all workers, workers with no recent contact. Installs on the phone as its own app. |
+| `centre.html` | Resource Centre staff (phone) | **TMWRC Centre** app: live SOS alarm (sound, vibration, notification), alert feed, one-tap Call / SMS / WhatsApp / Map to the worker, case status (New → Helping → Resolved), **messages to the worker** with quick replies in Swahili, map of all workers, workers with no recent contact. Installs on the phone as its own app. |
 | `dashboard.html` | Resource Centre staff (computer) | **Case Desk**: open SOS alerts first, help requests, map of workers' last positions, worker details, staff notes and status, list of workers with **no contact for 72 h+**, and a form to log cases that arrived by SMS or phone. |
 
 ## How the two apps are linked
 
-1. Worker presses SOS or reports a problem in **THC** → it appears in **THC Centre** within seconds, with an alarm for SOS.
+1. Worker presses SOS or reports a problem in **TMWRC** → it appears in **TMWRC Centre** within seconds, with an alarm for SOS.
 2. Staff open the case, call or message the worker, and set it to **Helping**.
-3. The worker's THC app shows "Centre is helping", and the staff message appears on the home screen. The worker can answer in the app.
+3. The worker's TMWRC app shows "Centre is helping", and the staff message appears on the home screen. The worker can answer in the app.
 4. Staff mark the case **Resolved** when done.
 
 ## How location works
@@ -38,7 +38,7 @@ Three linked parts, all using the same online database:
    * Project Settings → API: copy the **Project URL** and **anon/publishable key** into `config.js`.
 3. **Hosting** — upload everything in the `site` folder to any HTTPS host (Netlify, Cloudflare Pages, GitHub Pages, or the TUCTA website). HTTPS is required for GPS.
 4. Share the link `https://your-site/index.html` with workers (pre-departure training is a good moment). On Android: menu → **Add to Home screen**. On iPhone: Share → **Add to Home Screen**.
-5. Staff open `https://your-site/centre.html` on their phones, add it to the home screen as **THC Centre**, and sign in. On a computer they can use `dashboard.html`.
+5. Staff open `https://your-site/centre.html` on their phones, add it to the home screen as **TMWRC Centre**, and sign in. On a computer they can use `dashboard.html`.
 
 Without step 2 the app runs in **demo mode**: data stays in one browser, with example cases on the Case Desk.
 

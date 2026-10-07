@@ -1,8 +1,8 @@
 {
-  "name": "thc-mobile",
+  "name": "tmwrc-mobile",
   "private": true,
   "version": "1.0.0",
-  "description": "Native Android and iOS builds of THC (workers) and THC Centre (call centre).",
+  "description": "Native Android and iOS builds of TMWRC (workers) and TMWRC Centre (call centre).",
   "scripts": {
     "prepare:worker": "node scripts/prepare.mjs worker",
     "prepare:centre": "node scripts/prepare.mjs centre"

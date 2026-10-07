@@ -1,4 +1,4 @@
--- THC: online database for the worker app and staff Case Desk.
+-- TMWRC: online database for the worker app and staff Case Desk.
 -- Run this once in Supabase: Project > SQL Editor > New query > paste > Run.
 
 -- Every SOS, help request, check-in and registration is one row.
@@ -62,7 +62,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 -- ============================================================
--- Messages between the Centre (THC Centre app / Case Desk) and the worker (THC app)
+-- Messages between the Centre (TMWRC Centre app / Case Desk) and the worker (TMWRC app)
 -- ============================================================
 create table if not exists public.replies (
   id          uuid primary key default gen_random_uuid(),

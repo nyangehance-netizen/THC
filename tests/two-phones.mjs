@@ -1,7 +1,7 @@
 // End-to-end test with the real online database: two separate "phones".
-// Phone A runs THC (worker), phone B runs THC Centre (staff). Nothing is shared between them
+// Phone A runs TMWRC (worker), phone B runs TMWRC Centre (staff). Nothing is shared between them
 // except the database, exactly like two real phones.
-//   STAFF_EMAIL / STAFF_PASSWORD  staff login for THC Centre
+//   STAFF_EMAIL / STAFF_PASSWORD  staff login for TMWRC Centre
 //   BASE_URL                      where docs/app is served
 import { chromium } from "playwright";
 

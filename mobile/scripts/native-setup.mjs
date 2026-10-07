@@ -31,8 +31,8 @@ if (platform === "android") {
     execFileSync("plutil", ["-insert", key, `-${type}`, value, plist]);
   };
   set("NSLocationWhenInUseUsageDescription", "string", isCentre
-    ? "THC Centre shows your position on the map of workers."
-    : "THC sends your exact location to the Resource Centre when you press SOS, report a problem or check in, so staff can find and help you.");
+    ? "TMWRC Centre shows your position on the map of workers."
+    : "TMWRC sends your exact location to the Resource Centre when you press SOS, report a problem or check in, so staff can find and help you.");
   set("ITSAppUsesNonExemptEncryption", "bool", "NO");
   set("UIUserInterfaceStyle", "string", "Light");   // the apps use the white day theme only
   console.log("iOS Info.plist updated");

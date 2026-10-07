@@ -2,7 +2,7 @@ name: Two-phone test
 
 # Runs the worker app and the Centre app on two separate simulated phones against the real
 # database, and checks that an SOS goes to the Centre and the Centre's reply comes back.
-# Needs repository secrets STAFF_EMAIL and STAFF_PASSWORD (a THC Centre staff login).
+# Needs repository secrets STAFF_EMAIL and STAFF_PASSWORD (a TMWRC Centre staff login).
 on:
   workflow_dispatch:
     inputs:

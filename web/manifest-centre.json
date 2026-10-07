@@ -1,6 +1,6 @@
 {
-  "name": "THC Centre – Resource Centre staff",
-  "short_name": "THC Centre",
+  "name": "TMWRC Centre – Resource Centre staff",
+  "short_name": "TMWRC Centre",
   "description": "Live SOS alerts, worker locations and messaging for Resource Centre staff.",
   "start_url": "centre.html",
   "scope": "./",

@@ -1,11 +1,11 @@
-# THC — apps for migrant workers and the Resource Centre
+# TMWRC — apps for migrant workers and the Resource Centre
 
 Built for the **TUCTA Migrant Workers Resource Centre**. One codebase, four apps:
 
 | App | For | Android | iOS |
 |---|---|---|---|
-| **THC** | Migrant workers abroad: SOS with GPS, 2-tap reports, "I'm safe" check-ins, SMS fallback, messages from the Centre | ✓ | ✓ |
-| **THC Centre** | Call-centre staff: live SOS alarm, worker locations, call/SMS/WhatsApp, case status, messages to workers | ✓ | ✓ |
+| **TMWRC** | Migrant workers abroad: SOS with GPS, 2-tap reports, "I'm safe" check-ins, SMS fallback, messages from the Centre | ✓ | ✓ |
+| **TMWRC Centre** | Call-centre staff: live SOS alarm, worker locations, call/SMS/WhatsApp, case status, messages to workers | ✓ | ✓ |
 
 The same apps also run as websites on GitHub Pages: **https://nyangehance-netizen.github.io/THC/**
 (GitHub Pages publishes the `docs/` folder. After editing anything in `web/`, run `python3 web/build.py`, which also refreshes `docs/app/`, and commit both.)
@@ -25,8 +25,8 @@ Every push to `main` builds all four apps on GitHub.
 
 1. Open the **Actions** tab → **Build mobile apps** → the latest run.
 2. Scroll to **Artifacts** and download:
-   * `android-worker` → `THC-worker-debug.apk`
-   * `android-centre` → `THC-centre-debug.apk`
+   * `android-worker` → `TMWRC-worker-debug.apk`
+   * `android-centre` → `TMWRC-centre-debug.apk`
    * `ios-worker`, `ios-centre` → iPhone builds (see below)
 
 To build on demand: Actions → Build mobile apps → **Run workflow**.
@@ -57,15 +57,15 @@ To put the apps on **TestFlight / App Store** you need an Apple Developer accoun
 |---|---|
 | `IOS_CERTIFICATE_BASE64` | Apple Distribution certificate (.p12), base64 |
 | `IOS_CERTIFICATE_PASSWORD` | password of the .p12 |
-| `IOS_PROFILE_WORKER_BASE64` | App Store provisioning profile for `tz.or.tucta.thc`, base64 |
-| `IOS_PROFILE_CENTRE_BASE64` | App Store provisioning profile for `tz.or.tucta.thccentre`, base64 |
+| `IOS_PROFILE_WORKER_BASE64` | App Store provisioning profile for `tz.or.tucta.tmwrc`, base64 |
+| `IOS_PROFILE_CENTRE_BASE64` | App Store provisioning profile for `tz.or.tucta.tmwrccentre`, base64 |
 | `IOS_TEAM_ID` | your 10-character Apple Team ID |
 
 ## Before going live
 
 1. Set the real Centre phone numbers in `web/config.js`.
 2. Set up the online database (steps in `web/README.md`) and put its URL and key in `web/config.js`. Without it each app runs in demo mode on its own, and the worker and Centre apps cannot reach each other.
-3. App IDs are `tz.or.tucta.thc` and `tz.or.tucta.thccentre`. To change them, edit `mobile/scripts/prepare.mjs` before the first store upload.
+3. App IDs are `tz.or.tucta.tmwrc` and `tz.or.tucta.tmwrccentre`. To change them, edit `mobile/scripts/prepare.mjs` before the first store upload.
 
 ## Building on your own computer (optional)
 
