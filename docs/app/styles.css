@@ -102,3 +102,22 @@ textarea { resize: vertical; min-height: 90px; }
          color: var(--bg); padding: 11px 18px; border-radius: 980px; font-size: .9rem; font-weight: 500; z-index: 60; max-width: calc(100% - 32px); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ---- Register / Sign in with emailed code (auth-ui.js) ---- */
+.auth { max-width: 440px; margin: 0 auto; padding-inline: 16px; padding-block: 40px 48px; display: grid; gap: 22px; animation: authIn .45s cubic-bezier(.2,.8,.2,1); }
+@keyframes authIn { from { opacity: 0; transform: translateY(12px); } }
+.auth-brand { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.auth-logo { font-family: var(--font-display); font-weight: 700; font-size: 2.9rem; letter-spacing: -.04em; line-height: 1; }
+.auth-sub { color: var(--muted); font-size: .95rem; }
+.auth-seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); border-radius: 10px; padding: 2px; }
+.auth-seg button { position: relative; z-index: 1; border: 0; background: transparent; padding: 9px; font-weight: 500; font-size: .95rem; border-radius: 8px; cursor: pointer; color: var(--ink); }
+.auth-pill { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px); background: var(--surface); border-radius: 8px; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.04); transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+.auth-card { background: var(--surface); border-radius: 20px; padding: 22px 18px; display: grid; gap: 14px; box-shadow: var(--shadow); animation: authIn .35s cubic-bezier(.2,.8,.2,1); }
+.auth-card h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -.03em; }
+.auth-card .big { padding: 14px 22px; font-size: 1.05rem; }
+.auth-code { font-family: var(--font-mono); font-size: 1.9rem; letter-spacing: .45em; text-align: center; padding: 14px 10px; }
+.auth-links { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.linkbtn { border: 0; background: none; color: var(--brand); cursor: pointer; padding: 4px 0; font-size: .92rem; }
+.linkbtn:disabled { color: var(--muted); cursor: default; }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }

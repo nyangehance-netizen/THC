@@ -12,9 +12,6 @@ on:
       staff_password:
         description: "Password for that login (use a temporary account)"
         required: false
-  push:
-    branches: [main]
-    paths: ["web/**", "docs/app/**", "tests/**"]
 
 jobs:
   test:

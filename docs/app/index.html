@@ -247,6 +247,8 @@
   <div class="offbar" id="offbar" hidden><span data-i18n="offBanner"></span><button type="button" data-go="sms" data-i18n="smsNav"></button></div>
 
   <!-- ONBOARDING -->
+  <section id="authView" hidden></section>
+
   <section id="onb" class="onb" hidden>
     <div class="steps" aria-hidden="true"><i></i><i></i><i></i></div>
     <form id="regForm" novalidate>
@@ -340,6 +342,11 @@
       <p id="meAcc" class="small muted"></p>
       <div class="row"><button class="btn primary" type="button" id="refreshLoc" data-i18n="refresh"></button><a class="btn" id="mapLink" href="#" target="_blank" rel="noopener" hidden data-i18n="openMap"></a></div>
     </div>
+    <div class="card">
+      <h2 data-i18n="account"></h2>
+      <p class="small muted"><span data-i18n="signedInAs"></span> <b id="acctEmail"></b></p>
+      <button class="btn" id="signOutBtn" type="button" data-i18n="signOut"></button>
+    </div>
     <p class="small muted" style="text-align:center"><span id="orgName"></span> · <a href="centre.html" data-i18n="dashboardLink"></a></p>
   </main>
 </div>
@@ -358,7 +365,9 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="config.js"></script>
+<script>window.TMWRC_ROLE = "worker";</script>
 <script src="api.js"></script>
+<script src="auth-ui.js"></script>
 <script>
 (function () {
   const C = window.TUCTA_CONFIG, API = window.TuctaAPI, ls = API.ls;
@@ -384,6 +393,8 @@
   const T = {
     en: {
       online: "Online", offline: "Offline", offBanner: "No internet. Reports wait and send later, or use SMS now.",
+      account: "Account", signedInAs: "Signed in as", signOut: "Sign out", signOutWait: "{n} reports have not been sent yet. Connect to the internet first, then sign out.",
+      authSub: "Help for Tanzanian migrant workers", profileSaveFail: "Saved on this phone. It will be saved online when you have internet.",
       s1Title: "Welcome. Let's set you up.", s2Title: "Where do you work and live?", s3Title: "Who should we call?",
       regIntro: "Three short steps. Your details go only to the Resource Centre staff, so they can find and help you fast.",
       fullName: "Full name", phoneAbroad: "Phone number where you work", phoneHome: "Family phone in Tanzania (optional)",
@@ -422,6 +433,8 @@
     },
     sw: {
       online: "Mtandaoni", offline: "Nje ya mtandao", offBanner: "Hakuna intaneti. Ripoti zitatumwa baadaye, au tumia SMS sasa.",
+      account: "Akaunti", signedInAs: "Umeingia kama", signOut: "Toka", signOutWait: "Ripoti {n} bado hazijatumwa. Unganisha intaneti kwanza, kisha utoke.",
+      authSub: "Msaada kwa wafanyakazi wa Kitanzania nje ya nchi", profileSaveFail: "Imehifadhiwa kwenye simu. Itahifadhiwa mtandaoni ukipata intaneti.",
       s1Title: "Karibu. Tuanze.", s2Title: "Unafanya kazi na kuishi wapi?", s3Title: "Tumpigie nani?",
       regIntro: "Hatua tatu fupi. Taarifa zako zinakwenda kwa wafanyakazi wa Kituo tu, ili wakupate na kukusaidia haraka.",
       fullName: "Jina kamili", phoneAbroad: "Namba ya simu unakofanya kazi", phoneHome: "Namba ya familia Tanzania (si lazima)",
@@ -477,10 +490,25 @@
   const li = () => lang === "sw" ? 2 : 1;
   const catLabel = c => { const x = CATS.find(y => y[0] === c); return x ? x[li()] : ""; };
 
+  const AUTH_SW = {
+    register: "Jisajili", signin: "Ingia",
+    regTitle: "Fungua akaunti", regSub: "Mgeni? Andika jina lako na barua pepe. Tutakutumia namba ya siri kuthibitisha.",
+    inTitle: "Karibu tena", inSub: "Andika barua pepe uliyosajiliwa nayo. Tutakutumia namba ya siri ya kuingia.",
+    name: "Jina kamili", email: "Barua pepe (email)", send: "Tuma namba ya siri",
+    codeTitle: "Andika namba ya siri", codeSub: "Tumetuma namba ya tarakimu 6 kwa {e}. Inaweza kuchukua dakika moja. Angalia pia folda ya Spam.",
+    verify: "Thibitisha", resend: "Tuma namba mpya", resendIn: "Namba mpya baada ya sekunde {s}", change: "Tumia barua pepe nyingine",
+    needName: "Andika jina lako kamili.", needEmail: "Andika barua pepe sahihi.", needCode: "Andika namba kutoka kwenye barua pepe.",
+    no_account: "Hakuna akaunti yenye barua pepe hii. Gusa Jisajili kufungua mpya.",
+    bad_code: "Namba si sahihi au imeisha muda. Angalia barua pepe ya mwisho au tuma namba mpya.",
+    too_many: "Umeomba namba nyingi. Subiri dakika moja ujaribu tena.",
+    bad_email: "Barua pepe hii haionekani sahihi.", offline: "Hakuna intaneti. Unganisha ili kutuma namba.", failed: "Kuna tatizo. Jaribu tena.",
+    demoCode: "Hali ya majaribio, hakuna barua pepe inayotumwa. Namba yako ni {c}."
+  };
+
   /* ---------------- state ---------------- */
   let profile = ls.get("tucta_profile", null);
-  let workerId = ls.get("tucta_worker_id", null);
-  if (!workerId) { workerId = API.uuid(); ls.set("tucta_worker_id", workerId); }
+  let account = ls.get("tmwrc_account", null);           // { id, email } of the signed-in worker
+  let workerId = account ? account.id : null;
   let lastLoc = ls.get("tucta_last_loc", null);
   let outbox = ls.get("tucta_outbox", []);
   let history = ls.get("tucta_history", []);
@@ -621,7 +649,7 @@
     slot.innerHTML = `<button type="button" class="centre-msg" data-case="${esc(last.event_id)}"><span class="eyebrow">${unread ? "<i></i>" : ""}${t(unread ? "newMsg" : "fromCentre")} · ${esc(last.staff_name || t("centre"))}</span><p>${esc(last.body)}</p><span class="r">${t("reply")} →</span></button>`;
   }
   async function pollFeed() {
-    if (!profile || !navigator.onLine) return;
+    if (!profile || !workerId || !navigator.onLine) return;
     try {
       const f = await API.workerFeed(workerId);
       const before = new Set(feed.replies.map(r => r.id));
@@ -664,6 +692,7 @@
   }
   document.addEventListener("click", e => { const c = e.target.closest("[data-case]"); if (c && !e.target.closest(".sheet")) openCaseThread(c.dataset.case); });
   function renderProfile() {
+    if (account) $("#acctEmail").textContent = account.email;
     if (!profile) return;
     const rows = [["p_name", profile.full_name], ["p_phone", profile.phone], ["p_country", profile.country], ["p_city", profile.city], ["p_address", profile.address], ["p_employer", profile.employer], ["p_passport", profile.passport_no], ["p_em", [profile.emergency_name, profile.emergency_phone].filter(Boolean).join(" · ")]].filter(r => r[1]);
     $("#profile").innerHTML = rows.map(r => `<dt>${t(r[0])}</dt><dd>${esc(r[1])}</dd>`).join("");
@@ -673,7 +702,7 @@
     const parts = ["TMWRC SOS", p.full_name, p.phone, p.passport_no ? "PP " + p.passport_no : "", [p.city, p.country].filter(Boolean).join(", "), p.address ? "Home: " + p.address : ""];
     if (l) parts.push(`GPS ${l.lat.toFixed(5)},${l.lng.toFixed(5)} ±${l.accuracy}m ${mapUrl(l)}`, "Time " + new Date(l.time).toISOString().slice(0, 16).replace("T", " ") + " UTC");
     else parts.push("GPS: not available");
-    parts.push("Ref " + ref(workerId));
+    if (workerId) parts.push("Ref " + ref(workerId));
     return parts.filter(Boolean).join(" | ");
   }
   function renderSms() {
@@ -719,8 +748,9 @@
     }
     if (!$("#f_consent").checked) return fail(t("consentNeeded"));
     const F = ["full_name", "phone", "phone_tz", "passport_no", "country", "city", "address", "employer", "employer_phone", "job", "emergency_name", "emergency_phone"];
-    const p = {}; F.forEach(k => p[k] = formVal(k)); p.consent = true; p.language = lang;
+    const p = {}; F.forEach(k => p[k] = formVal(k)); p.consent = true; p.language = lang; p.email = account ? account.email : "";
     profile = p; ls.set("tucta_profile", profile);
+    API.saveProfile(workerId, profile).then(() => ls.set("tmwrc_profile_dirty", false)).catch(() => { ls.set("tmwrc_profile_dirty", true); toast(t("profileSaveFail")); });
     renderProfile(); renderHello(); renderSms(); showApp();
     try { await refreshLocation(); } catch (err) { locError(err); }
     await send("register"); ls.set("tucta_last_auto", Date.now());
@@ -827,7 +857,7 @@
   });
 
   /* ---------------- language & network ---------------- */
-  $$("[data-lang]").forEach(b => b.addEventListener("click", () => { lang = b.dataset.lang; ls.set("tucta_lang", lang); applyLang(); }));
+  $$("[data-lang]").forEach(b => b.addEventListener("click", () => { lang = b.dataset.lang; ls.set("tucta_lang", lang); applyLang(); if (!$("#authView").hidden) showAuth(); }));
   window.addEventListener("online", () => { renderNet(); flush().then(pollFeed); });
   window.addEventListener("storage", e => { if (e.key === "tucta_demo_events" || e.key === "tucta_demo_replies") pollFeed(); });
   setInterval(pollFeed, API.LIVE ? 20000 : 4000);
@@ -836,14 +866,54 @@
 
   /* ---------------- start ---------------- */
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
-  applyLang();
-  if (!profile) startOnboarding();
-  else {
+  /* ---------------- accounts: register / sign in with emailed code ---------------- */
+  function hideAll() { VIEWS.forEach(x => $("#v-" + x).hidden = true); $("#nav").hidden = true; $("#onb").hidden = true; $("#offbar").hidden = true; }
+  function showAuth() {
+    hideAll(); const v = $("#authView"); v.hidden = false;
+    AuthUI.mount(v, { brand: "TMWRC", subtitle: t("authSub"), texts: lang === "sw" ? AUTH_SW : {}, start: ls.get("tmwrc_has_account", false) ? "signin" : "register",
+      onDone: async (user, info) => {
+        // a different person on this phone: start clean
+        if (ls.get("tmwrc_last_user", null) !== user.id) {
+          profile = null; history = []; outbox = []; feed = { events: [], replies: [] };
+          ["tucta_profile", "tucta_history", "tucta_outbox", "thc_feed", "thc_read_at", "tucta_last_auto"].forEach(k => ls.set(k, null));
+          ls.set("tucta_history", []); ls.set("tucta_outbox", []);
+        }
+        account = { id: user.id, email: user.email }; workerId = user.id;
+        ls.set("tmwrc_account", account); ls.set("tmwrc_last_user", user.id); ls.set("tmwrc_has_account", true);
+        v.hidden = true; v.innerHTML = "";
+        if (!profile) { try { profile = await API.loadProfile(user.id); if (profile) ls.set("tucta_profile", profile); } catch (e) { /* offline: fill in again */ } }
+        if (profile) { applyLang(); enterApp(); return; }
+        const f = $("#regForm").elements; if (info.name) f.full_name.value = info.name;
+        applyLang(); startOnboarding();
+      } });
+  }
+  function enterApp() {
     showApp(); flush().then(pollFeed);
+    if (ls.get("tmwrc_profile_dirty", false)) API.saveProfile(workerId, profile).then(() => ls.set("tmwrc_profile_dirty", false)).catch(() => {});
     const lastAuto = ls.get("tucta_last_auto", 0);
     if (profile.consent && Date.now() - lastAuto > 6 * 3600 * 1000)
       refreshLocation().then(() => { ls.set("tucta_last_auto", Date.now()); return send("checkin", { message: "auto" }); }).catch(() => {});
   }
+  $("#signOutBtn").addEventListener("click", async () => {
+    if (outbox.length) { toast(t("signOutWait", { n: outbox.length })); return; }
+    try { await API.auth.signOut(); } catch (e) {}
+    account = null; workerId = null; ls.set("tmwrc_account", null);
+    showAuth();
+  });
+
+  applyLang();
+  (async () => {
+    // Signed in on this phone before? Then open straight away, even with no internet.
+    let user = null;
+    try { user = await API.auth.user(); } catch (e) { user = null; }
+    if (!user && account && !navigator.onLine) user = account;      // offline: trust this phone's last sign-in
+    if (!user) { showAuth(); return; }
+    account = { id: user.id, email: user.email }; workerId = user.id; ls.set("tmwrc_account", account);
+    if (!profile) { try { profile = await API.loadProfile(user.id); if (profile) ls.set("tucta_profile", profile); } catch (e) {} }
+    renderProfile();
+    if (!profile) { startOnboarding(); return; }
+    enterApp();
+  })();
 })();
 </script>
 </body></html>

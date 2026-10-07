@@ -17,7 +17,7 @@ const APPS = {
     appId: process.env.WORKER_APP_ID || "tz.or.tucta.tmwrc",
     appName: "TMWRC",
     page: "index.html",
-    files: ["styles.css", "config.js", "api.js", "icon-192.png", "icon-512.png"],
+    files: ["styles.css", "config.js", "api.js", "auth-ui.js", "icon-192.png", "icon-512.png"],
     // remove the link to the staff app from the worker's app
     strip: [/ · <a href="centre\.html"[^>]*><\/a>/]
   },
@@ -25,7 +25,7 @@ const APPS = {
     appId: process.env.CENTRE_APP_ID || "tz.or.tucta.tmwrccentre",
     appName: "TMWRC Centre",
     page: "centre.html",
-    files: ["styles.css", "config.js", "api.js", "demo-data.js", "icon-centre-192.png", "icon-centre-512.png"],
+    files: ["styles.css", "config.js", "api.js", "auth-ui.js", "demo-data.js", "icon-centre-192.png", "icon-centre-512.png"],
     strip: [/<a class="btn" href="dashboard\.html">[^<]*<\/a>/]
   }
 };

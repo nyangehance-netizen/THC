@@ -3,6 +3,9 @@
    DEMO mode: this browser's storage only. */
 (function () {
   const cfg = window.TUCTA_CONFIG || {};
+  // The worker app and the staff apps keep separate sign-ins, even on the same website.
+  const ROLE = window.TMWRC_ROLE || "worker";
+  const STORAGE_KEY = "tmwrc-auth-" + (ROLE === "worker" ? "worker" : "staff");
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY);
   const DEMO_KEY = "tucta_demo_events";
   const SUPABASE_SRC = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
@@ -17,10 +20,12 @@
     if (!LIVE) return Promise.resolve(null);
     if (!sbPromise) {
       sbPromise = new Promise((resolve, reject) => {
-        if (window.supabase) return resolve(window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY));
+        const make = () => window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY,
+          { auth: { storageKey: STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
+        if (window.supabase) return resolve(make());
         const s = document.createElement("script");
         s.src = SUPABASE_SRC;
-        s.onload = () => resolve(window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY));
+        s.onload = () => resolve(make());
         s.onerror = () => { sbPromise = null; reject(new Error("Could not load the online database library")); };
         document.head.appendChild(s);
       });
@@ -102,11 +107,11 @@
     const row = { id: uuid(), created_at: new Date().toISOString(), worker_id: workerId, event_id: eventId, sender: "worker", body, staff_name: null };
     if (!LIVE) { ls.set(REPLY_KEY, ls.get(REPLY_KEY, []).concat(row)); return row; }
     const sb = await client();
-    const { error } = await sb.rpc("worker_reply", { p_worker: workerId, p_event: eventId, p_body: body });
+    const { error } = await sb.from("replies").insert(row);
     if (error) throw error;
     return row;
   }
-  // worker: status of their own cases and the Centre's messages (only for this phone's private id)
+  // worker: status of their own cases and the Centre's messages (the database only returns their own)
   async function workerFeed(workerId) {
     if (!navigator.onLine) throw new Error("offline");
     if (!LIVE) {
@@ -115,9 +120,12 @@
       return { events: evs, replies: ls.get(REPLY_KEY, []).filter(r => r.worker_id === workerId) };
     }
     const sb = await client();
-    const { data, error } = await sb.rpc("worker_feed", { p_worker: workerId });
-    if (error) throw error;
-    return data || { events: [], replies: [] };
+    const [ev, rp] = await Promise.all([
+      sb.from("events").select("id,status,kind,category,created_at").eq("worker_id", workerId).in("kind", ["sos", "help"]).order("created_at", { ascending: false }),
+      sb.from("replies").select("id,created_at,event_id,sender,staff_name,body").eq("worker_id", workerId).order("created_at", { ascending: true })
+    ]);
+    if (ev.error) throw ev.error; if (rp.error) throw rp.error;
+    return { events: ev.data || [], replies: rp.data || [] };
   }
 
   function subscribe(onChange) {
@@ -126,18 +134,124 @@
       return;
     }
     client().then(sb => {
-      sb.channel("thc-feed")
+      sb.channel("tmwrc-feed")
         .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => onChange("events"))
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "replies" }, () => onChange("replies"))
         .subscribe();
     }).catch(() => {});
   }
 
-  /* ---------- staff sign-in ---------- */
+  /* ---------- accounts: register / sign in with a one-time code sent by email ---------- */
+  const DEMO_AUTH = "tmwrc_demo_auth_" + (ROLE === "worker" ? "worker" : "staff");
+  const DEMO_USERS = "tmwrc_demo_users";
+  const friendly = (e) => {
+    const m = String((e && e.message) || e || "");
+    if (/signups not allowed|user not found|not allowed for otp/i.test(m)) return new Error("no_account");
+    if (/expired|invalid/i.test(m) && /token|otp|code/i.test(m)) return new Error("bad_code");
+    if (/rate limit|too many|security purposes|only request this after/i.test(m)) return new Error("too_many");
+    if (/email.*invalid|invalid.*email/i.test(m)) return new Error("bad_email");
+    return new Error(m || "failed");
+  };
   const auth = {
-    async session() { if (!LIVE) return { demo: true }; const sb = await client(); const { data } = await sb.auth.getSession(); return data.session; },
-    async signIn(email, password) { const sb = await client(); const { error } = await sb.auth.signInWithPassword({ email, password }); if (error) throw error; },
-    async signOut() { if (!LIVE) return; const sb = await client(); await sb.auth.signOut(); }
+    // Sends a 6-digit code to the email. create=true for "Register", false for "Sign in".
+    async sendCode(email, create, name) {
+      email = email.trim().toLowerCase();
+      if (!LIVE) {
+        const users = ls.get(DEMO_USERS, {});
+        if (!create && !users[email]) throw new Error("no_account");
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        ls.set("tmwrc_demo_code", { email, code, create, name });
+        return { demoCode: code };
+      }
+      const sb = await client();
+      const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: !!create, data: name ? { name } : undefined } });
+      if (error) throw friendly(error);
+      return {};
+    },
+    async verifyCode(email, code) {
+      email = email.trim().toLowerCase(); code = String(code).replace(/\D/g, "");
+      if (!LIVE) {
+        const p = ls.get("tmwrc_demo_code", null);
+        if (!p || p.email !== email || p.code !== code) throw new Error("bad_code");
+        const users = ls.get(DEMO_USERS, {});
+        if (!users[email]) users[email] = { id: uuid(), email, name: p.name || "" };
+        ls.set(DEMO_USERS, users);
+        ls.set(DEMO_AUTH, users[email]);
+        return users[email];
+      }
+      const sb = await client();
+      const { data, error } = await sb.auth.verifyOtp({ email, token: code, type: "email" });
+      if (error) throw friendly(error);
+      return { id: data.user.id, email: data.user.email, name: (data.user.user_metadata || {}).name || "" };
+    },
+    // Signed-in user from this phone (works offline once signed in)
+    async user() {
+      if (!LIVE) return ls.get(DEMO_AUTH, null);
+      const sb = await client();
+      const { data } = await sb.auth.getSession();
+      const u = data.session && data.session.user;
+      return u ? { id: u.id, email: u.email, name: (u.user_metadata || {}).name || "" } : null;
+    },
+    async session() { return this.user(); },
+    async signOut() {
+      if (!LIVE) { ls.set(DEMO_AUTH, null); return; }
+      const sb = await client(); await sb.auth.signOut();
+    }
+  };
+
+  /* ---------- worker profile, kept online so it comes back on a new phone ---------- */
+  async function saveProfile(userId, profile) {
+    if (!LIVE) { const all = ls.get("tmwrc_demo_profiles", {}); all[userId] = profile; ls.set("tmwrc_demo_profiles", all); return; }
+    const sb = await client();
+    const { error } = await sb.from("workers").upsert({ user_id: userId, profile, updated_at: new Date().toISOString() });
+    if (error) throw error;
+  }
+  async function loadProfile(userId) {
+    if (!LIVE) return (ls.get("tmwrc_demo_profiles", {}))[userId] || null;
+    const sb = await client();
+    const { data, error } = await sb.from("workers").select("profile").eq("user_id", userId).maybeSingle();
+    if (error) throw error;
+    return data ? data.profile : null;
+  }
+
+  /* ---------- staff accounts: register, wait for approval, approve others ---------- */
+  const staff = {
+    async status() {
+      if (!LIVE) { const u = ls.get(DEMO_AUTH, null); const st = ls.get("tmwrc_demo_staff", {}); return u ? (st[u.id] || "none") : "none"; }
+      const sb = await client();
+      const { data, error } = await sb.rpc("my_staff_status");
+      if (error) throw error;
+      return data;
+    },
+    async request(name) {
+      if (!LIVE) { // demo: the first staff account is approved at once, later ones wait
+        const u = ls.get(DEMO_AUTH, null); const st = ls.get("tmwrc_demo_staff", {});
+        st[u.id] = Object.values(st).includes("staff") ? (st[u.id] === "staff" ? "staff" : "pending") : "staff";
+        ls.set("tmwrc_demo_staff", st);
+        if (st[u.id] === "pending") { const r = ls.get("tmwrc_demo_requests", []); r.push({ user_id: u.id, name, email: u.email, status: "pending", created_at: new Date().toISOString() }); ls.set("tmwrc_demo_requests", r); }
+        return st[u.id];
+      }
+      const sb = await client();
+      const { data, error } = await sb.rpc("request_staff", { p_name: name });
+      if (error) throw error;
+      return data;
+    },
+    async requests() {
+      if (!LIVE) return ls.get("tmwrc_demo_requests", []).filter(r => r.status === "pending");
+      const sb = await client();
+      const { data, error } = await sb.from("staff_requests").select("*").eq("status", "pending").order("created_at");
+      if (error) throw error;
+      return data;
+    },
+    async decide(userId, approve) {
+      if (!LIVE) {
+        const r = ls.get("tmwrc_demo_requests", []); const x = r.find(y => y.user_id === userId); if (x) x.status = approve ? "approved" : "declined"; ls.set("tmwrc_demo_requests", r);
+        const st = ls.get("tmwrc_demo_staff", {}); st[userId] = approve ? "staff" : "declined"; ls.set("tmwrc_demo_staff", st); return;
+      }
+      const sb = await client();
+      const { error } = await sb.rpc("decide_staff", { p_user: userId, p_approve: approve });
+      if (error) throw error;
+    }
   };
 
   /* ---------- demo helpers ---------- */
@@ -151,5 +265,5 @@
   function seedDemoReplies(rows) { if (!LIVE && !ls.get(REPLY_KEY, []).length) ls.set(REPLY_KEY, rows); }
   function clearDemo() { if (!LIVE) { ls.set(DEMO_KEY, []); ls.set(REPLY_KEY, []); ls.set("tucta_demo_seeded", false); } }
 
-  window.TuctaAPI = { LIVE, uuid, ls, sendEvent, listEvents, updateEvent, staffInsert, subscribe, auth, seedDemo, seedDemoReplies, clearDemo, listReplies, staffReply, workerReply, workerFeed };
+  window.TuctaAPI = { LIVE, ROLE, uuid, ls, sendEvent, listEvents, updateEvent, staffInsert, subscribe, auth, staff, saveProfile, loadProfile, seedDemo, seedDemoReplies, clearDemo, listReplies, staffReply, workerReply, workerFeed };
 })();

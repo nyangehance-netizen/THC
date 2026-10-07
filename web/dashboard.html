@@ -118,15 +118,10 @@
   </div>
 </header>
 
-<main id="loginView" class="wrap login" hidden>
-  <form class="card" id="loginForm">
-    <h2>Staff sign-in</h2>
-    <p class="small muted">Only Resource Centre staff accounts can see worker cases.</p>
-    <label>Email<input id="lg_email" type="email" autocomplete="username" required></label>
-    <label>Password<input id="lg_pass" type="password" autocomplete="current-password" required></label>
-    <p id="lgErr" class="note bad" hidden></p>
-    <button class="btn primary block" type="submit">Sign in</button>
-  </form>
+<main id="loginView" hidden></main>
+<main id="noAccess" class="wrap login" hidden>
+  <div class="card"><h2>No access yet</h2><p class="muted" id="naText">This account is not approved as Resource Centre staff. Register in the TMWRC Centre app; an administrator approves new staff there.</p>
+  <div class="row"><button class="btn" id="naOut" type="button">Sign out</button></div></div>
 </main>
 
 <main id="deskView" class="desk" hidden>
@@ -206,7 +201,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="config.js"></script>
+<script>window.TMWRC_ROLE = "staff";</script>
 <script src="api.js"></script>
+<script src="auth-ui.js"></script>
 <script src="demo-data.js"></script>
 <script>
 (function () {
@@ -444,22 +441,25 @@
   };
 
   $("#resetDemo").onclick = () => { API.clearDemo(); { const d = window.thcDemo(); API.seedDemo(d.events); API.seedDemoReplies(d.replies); } selected = null; renderMap.fitted = false; load(); toast("Demo data reset"); };
-  $("#signOut").onclick = async () => { await API.auth.signOut(); location.reload(); };
-  $("#loginForm").addEventListener("submit", async ev => {
-    ev.preventDefault(); $("#lgErr").hidden = true;
-    try { await API.auth.signIn($("#lg_email").value.trim(), $("#lg_pass").value); start(); }
-    catch (err) { $("#lgErr").hidden = false; $("#lgErr").textContent = "Sign-in failed: " + (err.message || "check your email and password"); }
-  });
-
-  /* ---------- start ---------- */
+  $("#signOut").onclick = $("#naOut").onclick = async () => { await API.auth.signOut(); location.reload(); };
   async function start() {
     $("#orgName").textContent = C.ORG_NAME;
     $("#mode").textContent = API.LIVE ? "Live" : "Demo";
-    let session = null;
-    try { session = await API.auth.session(); } catch (e) { toast("Could not reach the online database"); }
-    if (!session) { $("#loginView").hidden = false; $("#deskView").hidden = true; return; }
-    $("#loginView").hidden = true; $("#deskView").hidden = false;
-    $("#signOut").hidden = !API.LIVE; $("#demoBanner").hidden = API.LIVE;
+    let user = null;
+    try { user = await API.auth.user(); } catch (e) { toast("Could not reach the online database"); }
+    if (!user) {
+      $("#deskView").hidden = true; const v = $("#loginView"); v.hidden = false;
+      AuthUI.mount(v, { brand: "TMWRC Case Desk", subtitle: "Resource Centre staff", start: "signin",
+        texts: { regSub: "New staff member? Enter your name and work email. After the code, an administrator approves your account." },
+        onDone: async (u, info) => { v.hidden = true; v.innerHTML = ""; if (info.isNew) { try { await API.staff.request(info.name || u.email); } catch (e) {} } start(); } });
+      return;
+    }
+    let status = "none";
+    try { status = await API.staff.status(); } catch (e) {}
+    if (status !== "staff") { $("#loginView").hidden = true; $("#deskView").hidden = true; $("#noAccess").hidden = false;
+      if (status === "pending") $("#naText").textContent = "Your account is waiting for approval by a Resource Centre administrator. Try again after they approve it."; return; }
+    $("#loginView").hidden = true; $("#noAccess").hidden = true; $("#deskView").hidden = false;
+    $("#signOut").hidden = false; $("#demoBanner").hidden = API.LIVE;
     if (!API.LIVE) { const d = window.thcDemo(); if (API.seedDemo(d.events)) API.seedDemoReplies(d.replies); }
     await load();
     API.subscribe(() => load());

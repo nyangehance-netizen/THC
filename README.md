@@ -10,6 +10,24 @@ Built for the **TUCTA Migrant Workers Resource Centre**. One codebase, four apps
 The same apps also run as websites on GitHub Pages: **https://nyangehance-netizen.github.io/THC/**
 (GitHub Pages publishes the `docs/` folder. After editing anything in `web/`, run `python3 web/build.py`, which also refreshes `docs/app/`, and commit both.)
 
+## Accounts: register and sign in with an emailed code
+
+Both apps open on **Register / Sign in**. People type their email and receive a **6-digit code** (no passwords).
+
+* **Workers** register with name + email, confirm the code, then fill in their details. Their details are stored online, so signing in on a new phone brings everything back. Once signed in, the app keeps working with no internet.
+* **Centre staff** register in TMWRC Centre the same way. A new staff account waits until an existing staff member approves it under **Me → Staff requests**. Emails listed in the `staff_invites` table are approved automatically (the owner's email is listed).
+
+### Two settings in the Supabase dashboard (project `thc`)
+
+1. **Show the code in the email.** Authentication → Emails → Templates. In both **Confirm signup** and **Magic Link**, replace the body with:
+   ```html
+   <h2>Your TMWRC code</h2>
+   <p>Enter this code in the app: <strong style="font-size:24px;letter-spacing:4px">{{ .Token }}</strong></p>
+   <p>It expires in 1 hour. If you did not ask for it, ignore this email.</p>
+   ```
+   Subject for both: `Your TMWRC code`.
+2. **Send email to everyone.** Supabase's built-in email only reaches the project team's own addresses and only a few emails per hour. For workers and staff, add your own email sender under Authentication → Emails → SMTP Settings (for example Resend, Brevo or Zoho Mail, which have free plans).
+
 ## Folders
 
 ```
