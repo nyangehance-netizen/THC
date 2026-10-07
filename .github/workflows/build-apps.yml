@@ -11,6 +11,11 @@ on:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Also publish a GitHub Release with this name, e.g. v0.1.0-demo (leave empty for none)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -60,6 +65,7 @@ jobs:
           CODE=${{ github.run_number }}
           NAME=1.0.${{ github.run_number }}
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then NAME="${GITHUB_REF#refs/tags/v}"; fi
+          if [[ -n "${{ inputs.release_tag }}" ]]; then NAME="${{ inputs.release_tag }}"; NAME="${NAME#v}"; fi
           sed -i "s/versionCode [0-9]*/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"$NAME\"/" app/build.gradle
 
       - name: Build debug APK (install directly on a phone)
@@ -94,11 +100,14 @@ jobs:
           path: out/*
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ inputs.release_tag || github.ref_name }}
           files: out/*.apk
-          prerelease: ${{ contains(github.ref, 'demo') }}
+          prerelease: ${{ contains(inputs.release_tag || github.ref, 'demo') }}
 
   ios:
     name: iOS · ${{ matrix.app }}
@@ -188,8 +197,11 @@ jobs:
           path: out/*
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ inputs.release_tag || github.ref_name }}
           files: out/*
-          prerelease: ${{ contains(github.ref, 'demo') }}
+          prerelease: ${{ contains(inputs.release_tag || github.ref, 'demo') }}
