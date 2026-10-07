@@ -1,0 +1,51 @@
+name: Two-phone test
+
+# Runs the worker app and the Centre app on two separate simulated phones against the real
+# database, and checks that an SOS goes to the Centre and the Centre's reply comes back.
+# Needs repository secrets STAFF_EMAIL and STAFF_PASSWORD (a THC Centre staff login).
+on:
+  workflow_dispatch:
+    inputs:
+      staff_email:
+        description: "Staff login to test with (if the STAFF_EMAIL secret is not set)"
+        required: false
+      staff_password:
+        description: "Password for that login (use a temporary account)"
+        required: false
+  push:
+    branches: [main]
+    paths: ["web/**", "docs/app/**", "tests/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install browser
+        run: |
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve the apps
+        run: |
+          python3 web/build.py
+          (cd docs/app && python3 -m http.server 8080 > /dev/null 2>&1 &)
+          sleep 2
+      - name: Worker phone ↔ Centre phone
+        env:
+          STAFF_EMAIL: ${{ secrets.STAFF_EMAIL || inputs.staff_email }}
+          STAFF_PASSWORD: ${{ secrets.STAFF_PASSWORD || inputs.staff_password }}
+          BASE_URL: http://localhost:8080
+        run: |
+          echo "::add-mask::$STAFF_PASSWORD"
+          if [ -z "$STAFF_EMAIL" ]; then echo "No staff login given; skipping."; exit 0; fi
+          mkdir -p out
+          node tests/two-phones.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: two-phone-screenshots
+          path: out/*.png
