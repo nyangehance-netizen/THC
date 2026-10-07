@@ -20,6 +20,9 @@
     bad_email: "That email address does not look right.",
     offline: "No internet. Connect to send the code.", failed: "Something went wrong. Try again.",
     demoCode: "Demo mode, no email is sent. Your code is {c}.", sent: "Code sent",
+    demoHint: "Demo version: if the email does not arrive, enter the demo code {c}.",
+    real_account: "This email already has a real account. Enter the code from the email instead of the demo code.",
+    demo_off: "The demo code is switched off. Enter the code from the email.",
     gotLink: "Got a link in the email instead of a code?", linkHelp: "Press and hold the link or button in the email, choose Copy link, then paste it here.",
     linkPh: "Paste the link from the email", useLink: "Sign in with link", bad_link: "That is not the link from the email. Copy the whole link and try again."
   };
@@ -81,10 +84,18 @@
       btn.disabled = true;
       try {
         const r = await API.auth.sendCode(st.email, st.mode === "register", st.name);
-        st.step = "code"; render(); startWait(60);
+        st.step = "code"; render(); startWait(60); showDemo();
         if (r.demoCode) { const d = el.querySelector("#au_demo"); d.hidden = false; d.textContent = t("demoCode", { c: r.demoCode }); }
         el.querySelector("#au_code").focus();
-      } catch (e) { btn.disabled = false; err(msgFor(e)); }
+      } catch (e) {
+        const demo = (window.TUCTA_CONFIG || {}).DEMO_CODE;
+        if (demo && API.LIVE && !["no_account", "bad_email"].includes(e && e.message)) { st.step = "code"; render(); startWait(60); showDemo(); el.querySelector("#au_code").focus(); return; }
+        btn.disabled = false; err(msgFor(e));
+      }
+    }
+    function showDemo() {
+      const demo = (window.TUCTA_CONFIG || {}).DEMO_CODE; const d = el.querySelector("#au_demo");
+      if (demo && API.LIVE && d) { d.hidden = false; d.textContent = t("demoHint", { c: demo }); }
     }
     function wire() {
       el.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { st.mode = b.dataset.m; render(); });
@@ -105,7 +116,10 @@
           const code = inp.value.trim(); if (code.length < 6) return err(t("needCode"));
           const b = el.querySelector("#au_verify"); b.disabled = true;
           try {
-            const user = await API.auth.verifyCode(st.email, code);
+            const demo = (window.TUCTA_CONFIG || {}).DEMO_CODE;
+            const user = (demo && API.LIVE && code === demo)
+              ? await API.auth.demoLogin(st.email, code, st.name)
+              : await API.auth.verifyCode(st.email, code);
             clearInterval(st.timer);
             opts.onDone(user, { isNew: st.mode === "register", name: st.name || user.name });
           } catch (e) { b.disabled = false; inp.select(); err(msgFor(e)); }

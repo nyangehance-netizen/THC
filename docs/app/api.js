@@ -184,6 +184,22 @@
       if (error) throw friendly(error);
       return { id: data.user.id, email: data.user.email, name: (data.user.user_metadata || {}).name || "" };
     },
+    // Demo code: signs in through the demo-login server function, no email needed.
+    async demoLogin(email, code, name) {
+      email = email.trim().toLowerCase(); code = String(code).replace(/\D/g, "");
+      if (!LIVE) return this.verifyCode(email, ls.get("tmwrc_demo_code", {}).code || code);
+      const sb = await client();
+      const { data, error } = await sb.functions.invoke("demo-login", { body: { email, code, name: name || "" } });
+      if (error) {
+        let k = "failed";
+        try { const j = await error.context.json(); k = j.error || k; } catch (e) {}
+        throw new Error(k);
+      }
+      const r = await sb.auth.verifyOtp({ token_hash: data.token_hash, type: "magiclink" });
+      if (r.error) throw friendly(r.error);
+      const u = r.data.user;
+      return { id: u.id, email: u.email, name: (u.user_metadata || {}).name || "" };
+    },
     // Fallback while the email still contains a link instead of a code: the person pastes the link here.
     async verifyLink(link) {
       let u; try { u = new URL(String(link).trim()); } catch (e) { throw new Error("bad_link"); }
