@@ -19,7 +19,9 @@
     too_many: "Too many codes requested. Wait a minute and try again.",
     bad_email: "That email address does not look right.",
     offline: "No internet. Connect to send the code.", failed: "Something went wrong. Try again.",
-    demoCode: "Demo mode, no email is sent. Your code is {c}.", sent: "Code sent"
+    demoCode: "Demo mode, no email is sent. Your code is {c}.", sent: "Code sent",
+    gotLink: "Got a link in the email instead of a code?", linkHelp: "Press and hold the link or button in the email, choose Copy link, then paste it here.",
+    linkPh: "Paste the link from the email", useLink: "Sign in with link", bad_link: "That is not the link from the email. Copy the whole link and try again."
   };
 
   function mount(el, opts) {
@@ -60,6 +62,11 @@
           <p class="note bad" id="au_err" hidden></p>
           <button class="btn primary big" type="submit" id="au_verify">${t("verify")}</button>
           <div class="auth-links"><button type="button" class="linkbtn" id="au_resend"></button><button type="button" class="linkbtn" id="au_change">${t("change")}</button></div>
+          <details class="auth-alt"><summary>${t("gotLink")}</summary>
+            <p class="small muted">${t("linkHelp")}</p>
+            <input id="au_link" type="url" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="${esc(t("linkPh"))}">
+            <button type="button" class="btn" id="au_linkgo">${t("useLink")}</button>
+          </details>
         </form>`;
     }
     function err(msg) { const e = el.querySelector("#au_err"); e.hidden = false; e.textContent = msg; const c = el.querySelector(".auth-card"); c.classList.remove("shake"); void c.offsetWidth; c.classList.add("shake"); }
@@ -105,6 +112,16 @@
         };
         el.querySelector("#au_resend").onclick = e => { send(e.currentTarget).then(() => {}); };
         el.querySelector("#au_change").onclick = () => { st.step = "form"; render(); };
+        el.querySelector("#au_linkgo").onclick = async e => {
+          const b = e.currentTarget; const link = el.querySelector("#au_link").value.trim();
+          if (!link) return err(t("bad_link"));
+          b.disabled = true;
+          try {
+            const user = await API.auth.verifyLink(link);
+            clearInterval(st.timer);
+            opts.onDone(user, { isNew: st.mode === "register", name: st.name || user.name });
+          } catch (ex) { b.disabled = false; err(msgFor(ex)); }
+        };
       }
     }
     render();

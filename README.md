@@ -26,6 +26,7 @@ Both apps open on **Register / Sign in**. People type their email and receive a 
    <p>It expires in 1 hour. If you did not ask for it, ignore this email.</p>
    ```
    Subject for both: `Your TMWRC code`.
+   Until this is done the email contains a link instead. The apps accept it: on the code screen, open **Got a link in the email instead of a code?** and paste the link (press and hold it in the email, Copy link). Do not tap the link itself.
 2. **Send email to everyone.** Supabase's built-in email only reaches the project team's own addresses and only a few emails per hour. For workers and staff, add your own email sender under Authentication → Emails → SMTP Settings (for example Resend, Brevo or Zoho Mail, which have free plans).
 
 ## Folders

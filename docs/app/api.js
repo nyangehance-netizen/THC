@@ -184,6 +184,20 @@
       if (error) throw friendly(error);
       return { id: data.user.id, email: data.user.email, name: (data.user.user_metadata || {}).name || "" };
     },
+    // Fallback while the email still contains a link instead of a code: the person pastes the link here.
+    async verifyLink(link) {
+      let u; try { u = new URL(String(link).trim()); } catch (e) { throw new Error("bad_link"); }
+      const hash = u.searchParams.get("token") || u.searchParams.get("token_hash");
+      const kind = u.searchParams.get("type") || "magiclink";
+      if (!hash) throw new Error("bad_link");
+      if (!LIVE) throw new Error("bad_link");
+      const sb = await client();
+      let r = await sb.auth.verifyOtp({ token_hash: hash, type: kind === "signup" ? "signup" : kind === "invite" ? "invite" : "magiclink" });
+      if (r.error) r = await sb.auth.verifyOtp({ token_hash: hash, type: "email" });
+      if (r.error) throw friendly(r.error);
+      const usr = r.data.user;
+      return { id: usr.id, email: usr.email, name: (usr.user_metadata || {}).name || "" };
+    },
     // Signed-in user from this phone (works offline once signed in)
     async user() {
       if (!LIVE) return ls.get(DEMO_AUTH, null);

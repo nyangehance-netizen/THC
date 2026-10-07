@@ -1,6 +1,6 @@
 /* Keeps the worker app usable with no internet: the screens load from the phone,
    and SOS messages wait in the app until the connection returns. */
-const CACHE = "tmwrc-v6";
+const CACHE = "tmwrc-v7";
 const FILES = ["./", "index.html", "centre.html", "styles.css", "config.js", "api.js", "auth-ui.js", "demo-data.js", "manifest.json", "manifest-centre.json", "icon-192.png", "icon-512.png", "icon-centre-192.png", "icon-centre-512.png"];
 
 self.addEventListener("install", e => {
